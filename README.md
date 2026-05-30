@@ -99,7 +99,30 @@ python ui/cli.py
 
 ## 开发状态
 
-🚧 **目前处于架构设计阶段，核心功能开发中。**
+🚧 **核心五件套已完成，进入联调验证阶段。**
+
+### DVWA 本地测试（三阶段）
+
+**Stage 1：流程测试（跳过渗透）**
+```bash
+python start_lynxsec.py --dry-run
+# 输入: "扫描 http://localhost:80"
+# 验证: dispatcher -> recon -> auditor -> reporter 完整链路
+# 确认 pipeline.json、result 字段、双版本报告正常生成
+```
+
+**Stage 2：授权测试（pentest 放行）**
+```bash
+python start_lynxsec.py
+# 输入: "测试 DVWA 登录漏洞"
+# 验证: auth.json 授权硬闸、sqlmap 参数受限、auditor 评分
+```
+
+**Stage 3：中断恢复测试**
+```bash
+# 执行到一半 Ctrl+C，再重新 python start_lynxsec.py
+# 验证: pipeline.json 从中断点恢复继续执行
+```
 
 ---
 
