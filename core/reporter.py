@@ -329,6 +329,32 @@ def run_once(command: dict) -> str:
 
     _write_working_status(task_id)
 
+    # --- dry-run 模拟模式 ---
+    if os.getenv("LYNXSEC_DRY_RUN") == "1":
+        print("[报告Agent] 模拟模式 — 生成预设双版本报告")
+        os.makedirs(_REPORTS_DIR, exist_ok=True)
+        safe_t = task_id.replace("/", "_").replace("\\", "_")
+        safe_target = target.replace("/", "_").replace("\\", "_").replace(":", "_")
+
+        human = "## 🛡️ 安全检测结果\n\n### 🔴 发现 1 个高危漏洞\n\n#### 1. SQL 注入漏洞\n【问题是什么】你的网站登录接口可以被攻击者注入恶意SQL代码。\n【为什么会这样】代码直接把用户输入拼进了SQL查询。\n【怎么修】使用参数化查询。\n```python\ncursor.execute(\"SELECT * FROM users WHERE username = ?\", (username,))\n```\n\n## ⚡ 优先处理清单\n- [ ] 修复 SQL 注入\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
+
+        tech = f"## 📋 渗透测试技术报告\n\n| 字段 | 内容 |\n|------|------|\n| 目标 | {target} |\n| 检测时间 | {_now_iso()} |\n| 漏洞总数 | 1 (高危1)\n\n### 1. SQL Injection | CVSS 9.8 CRITICAL\n**攻击向量**：GET /vulnerabilities/sqli/?id=1\n**POC**：`' OR 1=1--`\n**CVSS 3.1 向量**：CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H\n**修复方案**：参数化查询\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
+
+        human_path = os.path.join(_REPORTS_DIR, f"{safe_t}_{safe_target}_人话版.md")
+        tech_path = os.path.join(_REPORTS_DIR, f"{safe_t}_{safe_target}_技术版.md")
+
+        with open(human_path, "w", encoding="utf-8") as f:
+            f.write(human)
+        with open(tech_path, "w", encoding="utf-8") as f:
+            f.write(tech)
+
+        output_paths = [human_path, tech_path]
+        _write_done_status(task_id, output_paths, "success", code=0)
+        print(f"[报告Agent] 模拟报告已生成：")
+        for p in output_paths:
+            print(f"  {p}")
+        return "success"
+
     try:
         llm = LLM()
     except RuntimeError as e:

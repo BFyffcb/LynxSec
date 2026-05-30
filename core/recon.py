@@ -315,6 +315,23 @@ def run_once(command: dict) -> str:
 
     _write_working_status(task_id)
 
+    # --- dry-run 模拟模式 ---
+    if os.getenv("LYNXSEC_DRY_RUN") == "1":
+        print("[情报Agent] 模拟模式 — 返回预设侦察数据")
+        mock_summary = {
+            "findings": [
+                {"type": "open_port", "detail": "端口 80/tcp - HTTP (Apache/2.4.54)", "severity": "info"},
+                {"type": "tech_stack", "detail": "Apache/2.4.54, PHP/7.4.33", "severity": "info"},
+            ],
+            "summary": "1 个开放端口：80(HTTP/Apache)。未发现子域名。",
+            "recommendation": "建议对 80 端口进行 Web 漏洞检测。",
+        }
+        safe_t = task_id.replace("/", "_").replace("\\", "_")
+        mock_path = os.path.join(_OUTPUTS_DIR, f"{safe_t}_analysis.json")
+        _write_json(mock_path, mock_summary)
+        _write_done_status(task_id, [mock_path], "success", code=0)
+        return "success"
+
     # --- LLM 初始化 ---
     try:
         llm = LLM()

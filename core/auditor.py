@@ -261,6 +261,40 @@ def run_once(command: dict) -> str:
 
     _write_working_status(task_id)
 
+    # --- dry-run 模拟模式 ---
+    if os.getenv("LYNXSEC_DRY_RUN") == "1":
+        print("[审计Agent] 模拟模式 — 返回预设审计数据")
+        mock_audit = {
+            "confirmed_vulnerabilities": [
+                {
+                    "type": "SQL Injection",
+                    "cve": "N/A",
+                    "cvss_score": 9.8,
+                    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                    "severity": "critical",
+                    "description": "登录接口存在 SQL 注入，无需认证即可利用",
+                    "impact": "数据库完全泄露，可能波及所有用户数据",
+                    "remediation": "使用参数化查询替代字符串拼接",
+                }
+            ],
+            "false_positives": [],
+            "attack_chains": [
+                {
+                    "name": "SQLi 数据泄露链",
+                    "steps": ["SQL注入获取数据库凭据", "读取敏感表", "凭据可用于横向移动"],
+                    "total_impact": "单个 SQLi 可导致数据库完全泄露",
+                }
+            ],
+            "risk_summary": "整体风险评估：1 个 critical 漏洞，建议立即修复",
+            "recommendations": ["立即修复 SQL 注入漏洞，使用参数化查询"],
+        }
+        os.makedirs(_OUTPUTS_DIR, exist_ok=True)
+        safe_t = task_id.replace("/", "_").replace("\\", "_")
+        audit_path = os.path.join(_OUTPUTS_DIR, f"{safe_t}_audit.json")
+        _write_json(audit_path, mock_audit)
+        _write_done_status(task_id, [audit_path], "success", code=0)
+        return "success"
+
     try:
         llm = LLM()
     except RuntimeError as e:
