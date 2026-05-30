@@ -33,7 +33,7 @@ LynxSec是一个多Agent AI智能体，专注于白帽安全检测。
 
 ```bash
 # 克隆项目
-git clone https://github.com/夜里九點差三分/LynxSec.git
+git clone https://github.com/BFyffcb/LynxSec.git
 cd LynxSec
 
 # 配置模型（支持任意OpenAI格式API）
