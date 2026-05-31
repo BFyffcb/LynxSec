@@ -1,4 +1,4 @@
-﻿"""
+"""
 core/dispatcher.py — LynxSec 调度Agent
 
 职责：
@@ -159,12 +159,12 @@ def _authorize(target: str, scan_scope: str) -> bool:
         True 表示授权通过，False 表示用户拒绝。
     """
     print()
-    print("┌" + "─" * 50 + "┐")
-    print("│  LynxSec 授权声明" + " " * 33 + "│")
-    print(f"│  目标: {target:<44}" + "│")
-    print(f"│  范围: {scan_scope:<44}" + "│")
-    print("│  我确认拥有该目标的测试授权" + " " * 23 + "│")
-    print("└" + "─" * 50 + "┘")
+    print("+" + "-" * 50 + "+")
+    print("|  LynxSec 授权声明" + " " * 33 + "|")
+    print(f"|  目标: {target:<44}" + "|")
+    print(f"|  范围: {scan_scope:<44}" + "|")
+    print("|  我确认拥有该目标的测试授权" + " " * 23 + "|")
+    print("+" + "-" * 50 + "+")
 
     try:
         answer = input("  [y/N]: ").strip().lower()
@@ -365,7 +365,7 @@ def _dispatch_agent(agent: str, task_id: str, action: str, target: str, params: 
     if ok:
         print(f"  [调度Agent] → 已下发任务到 {agent}（{action}）")
     else:
-        print(f"  [调度Agent] ✗ 下发任务到 {agent} 失败！")
+        print(f"  [调度Agent] [FAIL] 下发任务到 {agent} 失败！")
     return ok
 
 
@@ -608,7 +608,7 @@ def run(user_input: str) -> str | None:
     try:
         llm = LLM()
     except RuntimeError as e:
-        print(f"\n✗ 启动失败: {e}")
+        print(f"\n[FAIL] 启动失败: {e}")
         return None
 
     # ----------------------------------------------------------
@@ -677,7 +677,7 @@ def run(user_input: str) -> str | None:
         # --- 6b. 下发任务 ---
         ok = _dispatch_agent(agent, task_id, action, step_target, step_params)
         if not ok:
-            print(f"[调度Agent] ✗ 无法下发任务到 {agent}，流水线终止。")
+            print(f"[调度Agent] [FAIL] 无法下发任务到 {agent}，流水线终止。")
             _update_pipeline(task_id, status="halted")
             return None
 
@@ -740,7 +740,7 @@ def run(user_input: str) -> str | None:
 
         # --- 6e. 记录产出 ---
         agent_output = _read_agent_output(agent)
-        print(f"  [调度Agent] ✓ {agent} 完成")
+        print(f"  [调度Agent] [OK] {agent} 完成")
         if agent_output.get("outputs"):
             for item in agent_output["outputs"]:
                 print(f"    产出: {item}")
