@@ -480,7 +480,22 @@ def main() -> None:
         sys.exit(1)
 
     # --- 8. 等待就绪 ---
-    _wait_agents_ready(timeout=30)
+    all_ready = _wait_agents_ready(timeout=30)
+    if not all_ready:
+        print()
+        print("=" * 60)
+        print("  [WARN] 部分 Agent 未能就绪！")
+        print("  未启动的 Agent 将无法接收任务，可能导致流水线中断。")
+        print("=" * 60)
+        try:
+            answer = input("  是否继续启动？ [y/N]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            answer = "n"
+        if answer not in ("y", "yes"):
+            print("已取消。")
+            _cleanup(processes)
+            sys.exit(1)
+        print("  继续（部分 Agent 不可用）...")
 
     # --- 9. 交互模式 ---
     try:

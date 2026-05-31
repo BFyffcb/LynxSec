@@ -365,4 +365,4 @@ if __name__ == "__main__":
         poll_loop()
     except KeyboardInterrupt:
         _write_done_status("shutdown", [], "failed", code=1)
-        print
+        print("\n[auditor] 已退出。")

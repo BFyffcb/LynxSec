@@ -10,7 +10,7 @@ core/reporter.py — LynxSec 报告Agent
   4. 输出 Markdown 文件到 outputs/reports/
 
 双版本设计：
-  人话版：??高风险 → 影响解释 → 怎么修（代码示例）
+  人话版：[HIGH]风险 -> 影响解释 -> 怎么修（代码示例）
   技术版：CVE | CVSS | 攻击向量 | POC | 修复方案
 
 依赖链：core/reporter.py → infra/llm.py
@@ -164,16 +164,16 @@ _SYSTEM_PROMPT_HUMAN = """你是 LynxSec 的安全报告撰写专家，专门为
 
 要求：
   1. 用通俗易懂的语言，避免专业术语（或解释了再读）
-  2. 每个问题用 "?? 高危 / ?? 中危 / ?? 低危" 图标开头
+  2. 每个问题用 "[HIGH] / [MED] / [LOW]" 前缀开头
   3. 三个部分：【问题是什么】【为什么会这样】【怎么修】
   4. 修复方案给出具体代码示例
   5. 最后给一个简短的"你应该优先处理的事"
 
 输出格式（Markdown）：
 
-## ??? 安全检测结果
+## [SEC] 安全检测结果
 
-### ?? 发现 X 个高危漏洞
+### [HIGH] 发现 X 个高危漏洞
 
 #### 1. [漏洞名称]
 【问题是什么】
@@ -194,14 +194,14 @@ new_code
 
 ---
 
-### ?? 发现 X 个中危问题
+### [MED] 发现 X 个中危问题
 （同样的三段式）
 
-### ?? 发现 X 个低危提示
+### [LOW] 发现 X 个低危提示
 （同样的三段式）
 
 ---
-## ? 优先处理清单
+## [PRI] 优先处理清单
 - [ ] 第一件事
 - [ ] 第二件事
 
@@ -246,7 +246,7 @@ _SYSTEM_PROMPT_TECH = """你是 LynxSec 的安全报告撰写专家，专门为*
 
 输出格式（Markdown）：
 
-## ?? 渗透测试技术报告
+## [TECH] 渗透测试技术报告
 
 | 字段 | 内容 |
 |------|------|
@@ -336,9 +336,9 @@ def run_once(command: dict) -> str:
         safe_t = task_id.replace("/", "_").replace("\\", "_")
         safe_target = target.replace("/", "_").replace("\\", "_").replace(":", "_")
 
-        human = "## ??? 安全检测结果\n\n### ?? 发现 1 个高危漏洞\n\n#### 1. SQL 注入漏洞\n【问题是什么】你的网站登录接口可以被攻击者注入恶意SQL代码。\n【为什么会这样】代码直接把用户输入拼进了SQL查询。\n【怎么修】使用参数化查询。\n```python\ncursor.execute(\"SELECT * FROM users WHERE username = ?\", (username,))\n```\n\n## ? 优先处理清单\n- [ ] 修复 SQL 注入\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
+        human = "## [SEC] 安全检测结果\n\n### [HIGH] 发现 1 个高危漏洞\n\n#### 1. SQL 注入漏洞\n【问题是什么】你的网站登录接口可以被攻击者注入恶意SQL代码。\n【为什么会这样】代码直接把用户输入拼进了SQL查询。\n【怎么修】使用参数化查询。\n```python\ncursor.execute(\"SELECT * FROM users WHERE username = ?\", (username,))\n```\n\n## [PRI] 优先处理清单\n- [ ] 修复 SQL 注入\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
 
-        tech = f"## ?? 渗透测试技术报告\n\n| 字段 | 内容 |\n|------|------|\n| 目标 | {target} |\n| 检测时间 | {_now_iso()} |\n| 漏洞总数 | 1 (高危1)\n\n### 1. SQL Injection | CVSS 9.8 CRITICAL\n**攻击向量**：GET /vulnerabilities/sqli/?id=1\n**POC**：`' OR 1=1--`\n**CVSS 3.1 向量**：CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H\n**修复方案**：参数化查询\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
+        tech = f"## [TECH] 渗透测试技术报告\n\n| 字段 | 内容 |\n|------|------|\n| 目标 | {target} |\n| 检测时间 | {_now_iso()} |\n| 漏洞总数 | 1 (高危1) |\n\n### 1. SQL Injection | CVSS 9.8 CRITICAL\n**攻击向量**：GET /vulnerabilities/sqli/?id=1\n**POC**：`' OR 1=1--`\n**CVSS 3.1 向量**：CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H\n**修复方案**：参数化查询\n\n*本报告由 LynxSec 自动生成（模拟模式）*"
 
         human_path = os.path.join(_REPORTS_DIR, f"{safe_t}_{safe_target}_人话版.md")
         tech_path = os.path.join(_REPORTS_DIR, f"{safe_t}_{safe_target}_技术版.md")
@@ -443,4 +443,4 @@ if __name__ == "__main__":
         poll_loop()
     except KeyboardInterrupt:
         _write_done_status("shutdown", [], "failed", code=1)
-        print
+        print("\n[reporter] 已退出。")
