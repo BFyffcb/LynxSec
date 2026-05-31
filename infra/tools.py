@@ -192,3 +192,38 @@ def run_tool(
         cmd=cmd,
         error_type=error_type,
     )
+
+# ============================================================
+# Nmap standard scan wrapper
+# ============================================================
+
+def run_nmap(target: str, extra_args: list[str] | None = None, timeout: int = 300) -> ToolResult:
+    """Nmap standard scan with vulners, http-enum, http-cookie-flags scripts.
+    Flags: -sV --script=vulners,http-enum,http-cookie-flags -p- {target}
+    """
+    base_args = [
+        "-sV",
+        "--script=vulners,http-enum,http-cookie-flags",
+        "-p-",
+        target,
+    ]
+    if extra_args:
+        base_args = base_args[:-1] + extra_args + [target]
+    print(f"  [tools] Nmap standard scan: {target}")
+    return run_tool("nmap", base_args, timeout=timeout)
+
+
+def run_whatweb(target: str, extra_args: list[str] | None = None, timeout: int = 120) -> ToolResult:
+    """WhatWeb fingerprint wrapper."""
+    args = extra_args if extra_args else []
+    args.append(target)
+    print(f"  [tools] WhatWeb: {target}")
+    return run_tool("whatweb", args, timeout=timeout)
+
+
+def run_subfinder(domain: str, timeout: int = 120) -> ToolResult:
+    """Subfinder subdomain discovery. Domain only, not IP."""
+    args = ["-d", domain]
+    print(f"  [tools] Subfinder: {domain}")
+    return run_tool("subfinder", args, timeout=timeout)
+
