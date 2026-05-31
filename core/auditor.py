@@ -1,4 +1,4 @@
-﻿"""
+"""
 core/auditor.py — LynxSec 审计Agent
 
 职责：
@@ -364,4 +364,5 @@ if __name__ == "__main__":
     try:
         poll_loop()
     except KeyboardInterrupt:
-        print("\n[审计Agent] 已退出。")
+        _write_done_status("shutdown", [], "failed", code=1)
+        print

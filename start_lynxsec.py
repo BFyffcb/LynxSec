@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 start_lynxsec.py — LynxSec 一键启动脚本
 
@@ -71,7 +71,7 @@ def _check_config() -> bool:
 
     if not os.path.isfile(config_path):
         example_path = os.path.join(_PROJECT_ROOT, "config.env.example")
-        print("[启动检查] ✗ 未找到 config.env 文件！")
+        print("[启动检查] ? 未找到 config.env 文件！")
         print(f"  请从 {example_path} 复制一份：")
         print(f"    cp {example_path} {config_path}")
         print(f"  然后编辑 {config_path} 填入你的 API Key")
@@ -81,7 +81,7 @@ def _check_config() -> bool:
         with open(config_path, "r", encoding="utf-8") as f:
             content = f.read()
     except OSError as e:
-        print(f"[启动检查] ✗ 无法读取 config.env: {e}")
+        print(f"[启动检查] ? 无法读取 config.env: {e}")
         return False
 
     checks: dict[str, str] = {
@@ -93,7 +93,7 @@ def _check_config() -> bool:
     all_ok = True
     for name, prefix in checks.items():
         if prefix not in content:
-            print(f"[启动检查] ✗ config.env 缺少 {name}")
+            print(f"[启动检查] ? config.env 缺少 {name}")
             all_ok = False
         else:
             line_start = content.find(prefix)
@@ -102,11 +102,11 @@ def _check_config() -> bool:
                 line_end = len(content)
             value = content[line_start + len(prefix):line_end].strip()
             if not value or "your_" in value.lower() or "xxx" in value.lower():
-                print(f"[启动检查] ✗ {name} 未填写（当前值: {value[:20]}...）")
+                print(f"[启动检查] ? {name} 未填写（当前值: {value[:20]}...）")
                 all_ok = False
 
     if all_ok:
-        print(f"[启动检查] ✓ config.env 配置完整")
+        print(f"[启动检查] ? config.env 配置完整")
     return all_ok
 
 
@@ -121,10 +121,10 @@ def _check_dvwa() -> bool:
     try:
         request = Request(_DVWA_URL, method="GET")
         with urlopen(request, timeout=5) as response:
-            print(f"✓ HTTP {response.status}")
+            print(f"? HTTP {response.status}")
             return True
     except URLError:
-        print(f"✗ 无法连接")
+        print(f"? 无法连接")
         print(f"  请先启动 DVWA 靶场：")
         print(f"    cd 你的DVWA目录 && docker-compose up -d")
         return False
@@ -163,15 +163,15 @@ def _check_tools() -> bool:
             if result.returncode == 0:
                 # 取第一行输出作为版本信息
                 version_line = (result.stdout or result.stderr or "").split("\n")[0].strip()
-                print(f"  ✓ {tool_name}: {version_line[:60]}")
+                print(f"  ? {tool_name}: {version_line[:60]}")
             else:
-                print(f"  ⚠ {tool_name}: 命令返回非零 (exit={result.returncode})")
+                print(f"  ? {tool_name}: 命令返回非零 (exit={result.returncode})")
                 missing.append(tool_name)
         except FileNotFoundError:
-            print(f"  ✗ {tool_name}: 未安装或不在 PATH 中")
+            print(f"  ? {tool_name}: 未安装或不在 PATH 中")
             missing.append(tool_name)
         except subprocess.TimeoutExpired:
-            print(f"  ⚠ {tool_name}: 检查超时")
+            print(f"  ? {tool_name}: 检查超时")
             missing.append(tool_name)
 
     if missing:
@@ -184,7 +184,7 @@ def _check_tools() -> bool:
         if answer in ("n", "no"):
             return False
 
-    print(f"[启动检查] ✓ 工具链检查完成")
+    print(f"[启动检查] ? 工具链检查完成")
     return True
 
 
@@ -219,7 +219,7 @@ def _clean_state() -> None:
                     os.remove(filepath)
                     cleaned_count += 1
                 except OSError as e:
-                    print(f"  ⚠ 无法删除 {filepath}: {e}")
+                    print(f"  ? 无法删除 {filepath}: {e}")
 
     # 清理 outputs/temp/
     temp_dir = os.path.join(_OUTPUTS_DIR, "temp")
@@ -233,9 +233,9 @@ def _clean_state() -> None:
                     shutil.rmtree(itempath)
                 cleaned_count += 1
             except OSError as e:
-                print(f"  ⚠ 无法删除 {itempath}: {e}")
+                print(f"  ? 无法删除 {itempath}: {e}")
 
-    print(f"[启动检查] ✓ 已清理 {cleaned_count} 个旧文件")
+    print(f"[启动检查] ? 已清理 {cleaned_count} 个旧文件")
 
 
 # ============================================================
@@ -258,7 +258,7 @@ def _start_agent_process(agent_name: str, dry_run: bool) -> subprocess.Popen | N
     agent_script = os.path.join(_CORE_DIR, f"{agent_name}.py")
 
     if not os.path.isfile(agent_script):
-        print(f"  ✗ {agent_name}.py 不存在: {agent_script}")
+        print(f"  ? {agent_name}.py 不存在: {agent_script}")
         return None
 
     # 构建环境变量（继承当前环境 + dry-run 标记）
@@ -273,10 +273,10 @@ def _start_agent_process(agent_name: str, dry_run: bool) -> subprocess.Popen | N
             env=env,
         )
         mode_label = " [模拟模式]" if dry_run else ""
-        print(f"  ✓ {agent_name} 已启动{mode_label} (PID={proc.pid})")
+        print(f"  ? {agent_name} 已启动{mode_label} (PID={proc.pid})")
         return proc
     except OSError as e:
-        print(f"  ✗ {agent_name} 启动失败: {e}")
+        print(f"  ? {agent_name} 启动失败: {e}")
         return None
 
 
@@ -325,7 +325,7 @@ def _wait_agents_ready(timeout: int = 30) -> bool:
                 continue
 
         if len(ready) == len(expected):
-            print(" ✓ 全部就绪")
+            print(" ? 全部就绪")
             return True
 
         print(".", end="", flush=True)
@@ -345,13 +345,13 @@ def _interactive_loop(dry_run: bool) -> None:
     try:
         from core.dispatcher import run as dispatch  # type: ignore[import-untyped]
     except ImportError as e:
-        print(f"✗ 无法导入 dispatcher: {e}")
+        print(f"? 无法导入 dispatcher: {e}")
         return
 
     mode_label = " [模拟模式 — 不调用真实工具]" if dry_run else ""
     print()
     print("=" * 60)
-    print(f"  🐱 LynxSec 已就绪 — 专精白帽安全的AI智能体{mode_label}")
+    print(f"  ?? LynxSec 已就绪 — 专精白帽安全的AI智能体{mode_label}")
     print("=" * 60)
     print()
     print("  输入你的安全检测需求，例如：")
@@ -389,10 +389,10 @@ def _interactive_loop(dry_run: bool) -> None:
             continue
 
         if result:
-            print(f"\n[任务 #{task_count}] ✓ 完成")
+            print(f"\n[任务 #{task_count}] ? 完成")
             print(f"  报告路径: {result}")
         else:
-            print(f"\n[任务 #{task_count}] ✗ 未完成（可能被取消或遇到错误）")
+            print(f"\n[任务 #{task_count}] ? 未完成（可能被取消或遇到错误）")
 
         print("-" * 40)
 
@@ -415,7 +415,7 @@ def _cleanup(processes: list[subprocess.Popen]) -> None:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 proc.kill()
-            print(f"  ✓ PID {proc.pid} 已停止")
+            print(f"  ? PID {proc.pid} 已停止")
     print("[清理] 完成")
 
 
@@ -476,7 +476,7 @@ def main() -> None:
     # --- 7. 启动后台 Agent ---
     processes = _start_all_agents(dry_run)
     if not processes:
-        print("✗ 没有任何 Agent 成功启动，无法继续。")
+        print("? 没有任何 Agent 成功启动，无法继续。")
         sys.exit(1)
 
     # --- 8. 等待就绪 ---
