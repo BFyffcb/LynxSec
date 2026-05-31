@@ -214,12 +214,14 @@ def _clean_state() -> None:
     if os.path.isdir(_STATE_DIR):
         for filename in os.listdir(_STATE_DIR):
             if filename.endswith(".json"):
+                if filename == "pipeline.json":
+                    continue
                 filepath = os.path.join(_STATE_DIR, filename)
                 try:
                     os.remove(filepath)
                     cleaned_count += 1
                 except OSError as e:
-                    print(f"  ? 无法删除 {filepath}: {e}")
+                    print(f"  Warning cannot delete {filepath}: {e}")
 
     # 清理 outputs/temp/
     temp_dir = os.path.join(_OUTPUTS_DIR, "temp")
