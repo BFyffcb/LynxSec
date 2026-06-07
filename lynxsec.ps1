@@ -1,3 +1,1 @@
-# LynxSec CLI launcher (PowerShell)
-# Usage: lynxsec [--dry-run]
-python "\cli.py" @args
+C:\Users\ZhuanZ\AppData\Local\Programs\Python\Python314\python.exe "\cli.py" @args

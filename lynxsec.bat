@@ -1,4 +1,2 @@
 @echo off
-REM LynxSec CLI launcher
-REM Usage: lynxsec [--dry-run]
-python "%~dp0cli.py" %*
+C:\Users\ZhuanZ\AppData\Local\Programs\Python\Python314\python.exe "%~dp0cli.py" %*
