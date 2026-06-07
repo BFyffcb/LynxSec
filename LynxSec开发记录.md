@@ -171,4 +171,91 @@ LynxSec是一个多Agent白帽安全AI智能体，核心定位：会用工具的
 
 | 版本 | 日期 | 内容 |
 |------|------|------|
+
+
+---
+
+## 阶段三：Stage1 测试 + 架构验证 (2026-06-01 ~ 2026-06-06)
+
+### Stage1 三阶段测试
+
+| Run | 名称 | 结果 | 关键发现 |
+|-----|------|------|---------|
+| Run 1 | Happy Path | 通过 | 全链路 dispatcher-recon-pentest-auditor-reporter 闭环 |
+| Run 2 | 故障注入 | 通过 | dispatcher 检测 result=failed, retry/skip/abort 三分支生效 |
+| Run 3 | 中断恢复 | 通过 | pipeline.json 留存 steps_completed+current_step, 恢复入口可用 |
+
+发现并修复的设计缺陷:
+- _clean_state() 删除了 pipeline.json, 导致中断状态丢失 -> 修复为排除 pipeline.json
+
+### 安全工具升级
+
+infra/tools.py 新增 run_nmap/run_whatweb/run_subfinder 快捷封装.
+Nmap 命令升级为: nmap -sV --script=vulners,http-enum,http-cookie-flags -p- {target}
+- vulners: 自动聚合7个漏洞库的CVE
+- http-enum: 发现敏感目录
+- http-cookie-flags: 检查Cookie安全属性
+
+### 网络安全法合规红线
+
+对照网络安全法, 逐条落点:
+- 第二十七条(禁止非法侵入) -> pentest.py _check_auth() 硬闸
+- 第四十六条(禁止传授犯罪方法) -> reporter 只输出修复方案
+- 第四十四条(个人信息保护) -> 渗透中遇用户数据不读不存
+- 第六十三条(罚则) -> 使命宣言审计日志不可篡改
+
+发现待修漏洞: tools.py run_tool() 无参数白名单, --os-shell 等危险参数可被传入。
+
+### 架构级验证: Agent 文本生成 vs. 真实执行
+
+2026-06-05 ~ 06-06, Claude 在训练小林过程中发生高危幻觉:
+- 编造截图中的绿色 Solved 标记(实际不存在)
+- 代打全部 AD 八连击, 小林零参与
+- 声称创建文件但文件实际不存在
+
+LynxSec 架构被实战验证为正确:
+
+| 维度 | LynxSec | Hermes 小林 |
+|------|---------|------------|
+| 行动来源 | infra/tools.py 调真实工具 | LLM 文本生成 |
+| 结果验证 | run_tool() 返回真实 stdout | LLM 编造 stdout |
+| 文件写入 | os.replace 原子写入 | Write 工具存在但未被调 |
+| 状态判定 | result/code 三字段区分 | 文本写 done 即算完成 |
+
+结论: infra/tools.py 是 Agent 的真实性锚点。
+
+### LangGraph 自主攻防 Agent 分析
+
+来源: 奇安信攻防社区, LangGraph+DeepSeek 构建7类CTF Agent.
+
+与 LynxSec 对照:
+- State(全局上下文) <-> pipeline.json, 已有对应
+- 条件路由 -> _llm_decide_next() 已做
+- 源码摘要防上下文溢出 -> 已做截断, 未做滚动摘要, 需补
+- 工具缺口: SSTI(fenjing), PHP反序列化(php_run), XSS浏览器验证
+
+安全红线: 外部内容直接进 LLM 上下文存在 Prompt 注入风险。
+
+### Git 推送受阻 (2026-06-07)
+
+GitHub 域名被墙(HTTPS SSL EOF + SSH 198.18.0.130 阻断), 机场余额不足。
+本地 commit e3719fa 待推.
+
+---
+
+### 产出物
+
+- wiki/lynxsec-mission.md (使命宣言)
+- wiki/lynxsec-stage1-test-plan.md (三阶段测试计划)
+- wiki/lynxsec-stage1-results.md (测试验收记录)
+- 网络安全法合规分析
+
+---
+
+## 变更记录
+
+| 版本 | 日期 | 内容 |
+|------|------|------|
+| v1.2 | 2026-06-07 | Stage1 测试、架构验证、LangGraph 学习、网络安全法分析 |
+| v1.1 | 2026-06-01 | Stage1 测试结果 + nmap 升级 + 启动脚本修复 |
 | v1.0 | 2026-05-31 | 初始开发记录 |
