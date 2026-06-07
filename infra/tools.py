@@ -110,6 +110,78 @@ def _map_error(
 
 
 # ============================================================
+# ============================================================
+# 参数安全校验
+# ============================================================
+
+_DANGEROUS_FLAGS: dict[str, list[str]] = {
+    "sqlmap": [
+        "--os-shell", "--os-cmd", "--os-pwn",
+        "--file-read", "--file-write", "--file-dest",
+        "--sql-shell", "--reg-read", "--reg-write",
+        "--dump-all", "--drop-set",
+    ],
+    "hydra": [
+        "-t",
+    ],
+    "nuclei": [
+        "-rl",
+    ],
+    "nmap": [
+        "--script",
+    ],
+    "metasploit": [
+        "msfconsole",
+    ],
+}
+
+_NMAP_ALLOWED_SCRIPTS: set[str] = {
+    "vulners", "http-enum", "http-cookie-flags",
+    "http-headers", "ssl-enum-ciphers", "http-title",
+    "ftp-anon", "ssh-auth-methods",
+}
+
+def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
+    """检查参数是否包含危险标志.
+
+    对应网络安全法第二十七条:
+      不得提供专门用于从事侵入网络、干扰网络正常功能
+      窃取网络数据等危害网络安全活动的程序、工具.
+
+    在参数到达 subprocess 之前拦截危险操作.
+    LynxSec 不为一键入侵提供便利.
+
+    返回:
+        (True, "")  -- 安全，可以继续
+        (False, reason) -- 被拦截，原因说明
+    """
+    blocked = _DANGEROUS_FLAGS.get(tool_name, [])
+
+    for i, arg in enumerate(args):
+        arg_stripped = arg.strip()
+        for bad in blocked:
+            if arg_stripped == bad or arg_stripped.startswith(bad + "="):
+                return False, f"dangerous flag blocked [{tool_name}]: {bad}"
+
+        if tool_name == "hydra" and arg in ("-t", "--threads"):
+            if i + 1 < len(args) and args[i + 1] == "0":
+                return False, f"dangerous flag blocked [{tool_name}]: -t 0 (unlimited threads)"
+
+        if tool_name == "nmap" and arg == "--script":
+            if i + 1 < len(args):
+                scripts = args[i + 1].split(",")
+                for s in scripts:
+                    s_clean = s.strip()
+                    if s_clean not in _NMAP_ALLOWED_SCRIPTS:
+                        return False, (
+                            f"nmap NSE script not in allowlist [{tool_name}]: {s_clean}. "
+                            f"allowed: {sorted(_NMAP_ALLOWED_SCRIPTS)}"
+                        )
+
+    return True, ""
+
+
+# ============================================================
 # 统一调用入口
 # ============================================================
 
@@ -135,7 +207,21 @@ def run_tool(
 
     纪律 C3（异常处理）：所有异常都被捕获并转为 ToolResult，
     不向上抛出未处理的异常。
+    纪律 C4（安全边界）：危险参数在 subprocess 之前被 _validate_args 拦截。
     """
+    safe, block_reason = _validate_args(tool_name, args)
+    if not safe:
+        print(f"  [tools] parameter blocked: {block_reason}")
+        return ToolResult(
+            tool=tool_name,
+            success=False,
+            code=1,
+            stdout="",
+            stderr=block_reason,
+            cmd=[tool_name] + args,
+            error_type="blocked_by_policy",
+        )
+
     cmd = _build_cmd(tool_name, args)
 
     print(f"  [tools] 执行: {' '.join(cmd)}")
