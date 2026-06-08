@@ -223,6 +223,11 @@ def main():
             if input().strip().lower() != "y": sys.exit(0)
         except: sys.exit(0)
 
+    # ---- 工具可用性预检 ----
+    console.print("\n[dim]  Scanning tool availability...[/dim]")
+    from infra.tool_checker import scan_all_tools
+    scan_all_tools(ROOT)
+
     clean_state()
     os.makedirs(STATE, exist_ok=True)
 
