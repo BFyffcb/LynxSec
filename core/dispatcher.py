@@ -292,6 +292,219 @@ def _check_existing_pipeline() -> dict | None:
     return None
 
 
+
+def _clean_existing_pipeline() -> None:
+    """删除旧 pipeline 文件，清空中断状态。"""
+    try:
+        os.remove(_PIPELINE_PATH)
+    except OSError:
+        pass  # 文件不存在则忽略
+
+
+def _resume_from_pipeline(pipeline: dict) -> str | None:
+    """从 pipeline 断点恢复，跳过已完成步骤。
+
+    参数:
+        pipeline: 待恢复的 pipeline 字典
+
+    返回:
+        报告文件路径（成功时）；None（失败时）。
+    """
+    task_id = pipeline.get("task_id", "")
+    target = pipeline.get("target", "")
+    scope = pipeline.get("scan_scope", "")
+    completed = pipeline.get("steps_completed", [])
+    saved_outputs = pipeline.get("outputs", {})
+
+    remaining = [s for s in _PIPELINE_ORDER if s not in completed]
+    print(f"[调度Agent] 从断点恢复任务 {task_id}")
+    print(f"  目标: {target}")
+    print(f"  已完成: {completed}")
+    if remaining:
+        print(f"  剩余: {remaining}")
+
+    # 恢复执行仍需确认授权
+    if not _authorize(target, scope):
+        _update_pipeline(task_id, status="halted")
+        return None
+
+    # 确保 pentest agent 能找到授权记录
+    _save_auth(target, scope)
+
+    # 初始化 LLM
+    print("[调度Agent] 正在连接 LLM...")
+    try:
+        llm = LLM()
+    except RuntimeError as e:
+        print(f"\n[FAIL] 启动失败: {e}")
+        _update_pipeline(task_id, status="halted")
+        return None
+
+    step_names = " -> ".join(_PIPELINE_ORDER)
+    print(f"[调度Agent] 流水线: {step_names}")
+
+    pipeline["status"] = "running"
+    _write_json(_PIPELINE_PATH, pipeline)
+
+    intent = {"target": target, "scan_scope": scope}
+
+    # 按流水线处理剩余步骤
+    for step_name in _PIPELINE_ORDER:
+        if step_name in completed:
+            # 已完成步骤：从 saved_outputs 回填 pipeline outputs
+            agent = step_name
+            if agent and agent in saved_outputs:
+                _update_pipeline(task_id, outputs_update={agent: saved_outputs[agent]})
+            continue
+
+        # 构建上下文：上一个 agent 的产出
+        prev_agents = [s for s in completed]  # agent name = step name
+        prev_agent = prev_agents[-1] if prev_agents else None
+        prev_output = saved_outputs.get(prev_agent, {}) if prev_agent else {}
+
+        if prev_agent:
+            lbl = f"决定 {step_name} 的行动"
+            print(f"[调度Agent] 分析 {prev_agent} 的结果，{lbl}...")
+            decision = _llm_decide_next(llm, prev_agent, prev_output, intent, completed)
+        else:
+            # No previous agent output ? use default params for first step
+            if step_name == "recon":
+                decision = {"next_action": "reconnaissance", "target": target,
+                    "params": {"instruction": f"? {target} ????????"}, "reason": "????"}
+            else:
+                decision = {"next_action": "continue", "target": target,
+                    "params": {}, "reason": "?????"}
+
+        if not decision.get("next_action") or decision.get("next_action") == "stop":
+            print("[调度Agent] LLM 决策终止流水线")
+            _update_pipeline(task_id, status="halted")
+            return None
+
+        step_target = decision.get("target", target)
+        step_params = decision.get("params", {})
+        action = decision.get("next_action", "continue")
+        reason = decision.get("reason", "")
+        print(f"  决策: {reason}")
+
+        agent = step_name  # agent name = step name in _PIPELINE_ORDER
+        if agent is None:
+            continue
+
+        _update_pipeline(task_id, step_name=step_name)
+        msg = f"  [调度Agent] -> 已下发任务到 {agent}（{action}）"
+        print(msg)
+
+        # pentest 必须 auth.json
+        if agent == "pentest":
+            _save_auth(target, scope)
+
+        if not _dispatch_agent(agent, task_id, action, step_target, step_params):
+            _update_pipeline(task_id, status="halted")
+            return None
+
+        timeout_msg = f"  [调度Agent] 等待 {agent} 完成（最长 {_AGENT_TIMEOUT_SECONDS} 秒）..."
+        print(timeout_msg)
+
+        result = _wait_for_agent(agent, task_id)
+
+        if result == "done":
+            agent_output = _read_agent_output(agent)
+            print(f"  [调度Agent] [OK] {agent} 完成")
+            if agent_output.get("outputs"):
+                for p in agent_output["outputs"]:
+                    print(f"    产出: {p}")
+            completed.append(step_name)
+            _update_pipeline(
+                task_id,
+                step_name=None,
+                step_completed=step_name,
+                outputs_update={agent: agent_output},
+            )
+
+        elif result == "failed":
+            print(f"  [调度Agent] {agent} 报告执行失败，检查产出详情。")
+            agent_output = _read_agent_output(agent)
+            if agent_output:
+                _update_pipeline(task_id, outputs_update={agent: agent_output})
+
+            choice = _ask_blocked_action(agent)
+            if choice == "abort":
+                _update_pipeline(task_id, status="halted")
+                return None
+            elif choice == "retry":
+                if not _dispatch_agent(agent, task_id, action, step_target, step_params):
+                    _update_pipeline(task_id, status="halted")
+                    return None
+                retry_result = _wait_for_agent(agent, task_id)
+                if retry_result != "done":
+                    agent_output = _read_agent_output(agent)
+                    if agent_output:
+                        _update_pipeline(task_id, outputs_update={agent: agent_output})
+                    completed.append(step_name)
+                    _update_pipeline(task_id, step_completed=step_name)
+                    continue
+                # retry succeeded
+                agent_output = _read_agent_output(agent)
+                print(f"  [调度Agent] [OK] {agent} 重试完成")
+                if agent_output.get("outputs"):
+                    for p in agent_output["outputs"]:
+                        print(f"    产出: {p}")
+                completed.append(step_name)
+                _update_pipeline(
+                    task_id,
+                    step_name=None,
+                    step_completed=step_name,
+                    outputs_update={agent: agent_output},
+                )
+            else:  # skip
+                completed.append(step_name)
+                _update_pipeline(task_id, step_completed=step_name)
+                continue
+
+        else:  # timeout
+            print(f"  [调度Agent] {agent} 超时")
+            choice = _ask_blocked_action(agent)
+            if choice == "abort":
+                _update_pipeline(task_id, status="halted")
+                return None
+            elif choice == "retry":
+                retry_result = _wait_for_agent(agent, task_id)
+                if retry_result != "done":
+                    completed.append(step_name)
+                    _update_pipeline(task_id, step_completed=step_name)
+                    continue
+                agent_output = _read_agent_output(agent)
+                print(f"  [调度Agent] [OK] {agent} 重试完成")
+                if agent_output.get("outputs"):
+                    for p in agent_output["outputs"]:
+                        print(f"    产出: {p}")
+                completed.append(step_name)
+                _update_pipeline(
+                    task_id,
+                    step_name=None,
+                    step_completed=step_name,
+                    outputs_update={agent: agent_output},
+                )
+            else:  # skip
+                completed.append(step_name)
+                _update_pipeline(task_id, step_completed=step_name)
+                continue
+
+    # 全部步骤完成
+    _update_pipeline(task_id, status="completed")
+    report_output = _read_agent_output("reporter")
+    report_paths = report_output.get("outputs", [])
+    if report_paths:
+        print()
+        print("=" * 60)
+        print(f"  扫描完成！")
+        print(f"  任务 ID: {task_id}")
+        for rp in report_paths:
+            print(f"  报告: {rp}")
+        print("=" * 60)
+        return report_paths[0] if report_paths else None
+    return None
+
 # ============================================================
 # Agent 调度核心
 # ============================================================
@@ -556,9 +769,10 @@ def run(user_input: str) -> str | None:
         except (EOFError, KeyboardInterrupt):
             resume = "n"
         if resume in ("", "y"):
-            # TODO: 中断恢复逻辑（v1.2）
-            print("[调度Agent] 中断恢复功能开发中，将新建任务。")
-        # 不管选什么，都进入新任务流程
+            # 从 pipeline 留下的断点恢复
+            return _resume_from_pipeline(existing)
+        # 用户选择不恢复，则删除旧 pipeline 进入新流程
+        _clean_existing_pipeline()
 
     # ----------------------------------------------------------
     # 第2步：初始化 LLM
