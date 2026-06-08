@@ -339,3 +339,69 @@ GitHub 域名被墙(HTTPS SSL EOF + SSH 198.18.0.130 阻断), 机场余额不足
 | `core/auditor.py` | 改 2 行 | import build_prompt + 调用处替换 |
 | `infra/tools.py` | 重写 _validate_args | 三级分级 + 工具白名单 + 审计日志 |
 | `tests/test_tools.py` | 新建 | 18 个测试用例 |
+
+
+---
+
+## 阶段五：代码审查修复 + Agent思考可视化 (2026-06-08)
+
+### Agent 思考过程可视化
+
+每个 LLM 调用点现在显示实时思考标签和耗时：
+- `infra/llm.py` `chat()` 新增 `thinking_label` 参数
+- 5 个 Agent 各加标签：解析用户意图 / 规划侦察策略 / 规划攻击策略 / 审计分析 / 决定下一步行动 / 生成人话版报告 / 生成技术版报告
+- 输出格式：`⏳ 规划侦察策略... (2.3s)`
+
+### 代码审查修复（14 项中修 11 项）
+
+审查来源：Claude Code + 独立交叉验证，两份审查高度一致。
+
+**Bug 修复（4 项）：**
+| # | 文件 | 修复内容 |
+|---|------|---------|
+| 1 | `infra/tools.py` | 删除 `_ALLOWED_TOOLS` 重复定义 |
+| 2 | `infra/tools.py` | 删除工具白名单死代码（双重检查，第二次永远不执行） |
+| 3 | `infra/tools.py` | `_BLOCKED_FOREVER` 永久拦截提到白名单之前，nc 加入 `_ALLOWED_TOOLS`，解决"返回错误文案"问题 |
+| 4 | `core/dispatcher.py` | retry 分支加 `if not _dispatch_agent(...)` 检查，防止下发失败干等超时 |
+| 5 | `core/dispatcher.py` | retry 失败后仍收集 agent 部分产出写入 pipeline，防止下游 auditor 拿空数据 |
+
+**质量改进（6 项）：**
+| # | 内容 |
+|---|------|
+| 6 | 提取 `infra/common.py`（`read_json`/`write_json`），5 个 Agent 各删 ~50 行重复代码 |
+| 7 | 删除 `dispatch("")` 启动时空调用，消除无意义 LLM 推理 |
+| 8 | `start_lynxsec.py` `_check_dvwa` 绕过系统代理，与 `lynxcli.py` 一致 |
+| 9 | 删除 `run_nmap`/`run_whatweb`/`run_subfinder` 3 个死代码包装函数 |
+| 10 | 创建 `infra/__init__.py` 显式包声明 |
+| 11 | `import time` 从方法内部移到 `llm.py` 模块顶部 |
+| 14 | WSL 检测加 `WSL_DISTRO_NAME` 环境变量验证，避免 Docker/Cygwin 误判 |
+
+**留到后续：**
+
+| # | 内容 | 原因 |
+|---|------|------|
+| 12 | 中断恢复功能 | 功能实现，非 bug |
+| 13 | Agent 进程信号处理 | 需单独设计 |
+
+### 本期代码变更量
+
+| 文件 | 变更 | 说明 |
+|------|------|------|
+| `infra/tools.py` | ~40 行删除 | 死代码 + 重复定义清理 |
+| `infra/common.py` | 新建 27 行 | 共享 JSON 读写 |
+| `core/dispatcher.py` | +13 行 | retry 分支修复 |
+| `core/recon.py` | -50 行 | 删除重复 _read/_write_json |
+| `core/pentest.py` | -50 行 | 删除重复 _read/_write_json |
+| `core/auditor.py` | -50 行 | 删除重复 _read/_write_json |
+| `core/reporter.py` | -50 行 | 删除重复 _read/_write_json |
+| `infra/llm.py` | 改 3 行 | import time 移到顶部 |
+| `lynxcli.py` | 改 1 行 | 删除 dispatch("") |
+| `start_lynxsec.py` | 改 3 行 | 代理绕过 |
+| `infra/__init__.py` | 新建 | 包声明 |
+
+净效果：+70 / -237 行，删了 5 份重复代码，修了 4 个真实 bug。
+
+### 测试
+
+- `tests/test_tools.py` 18/18 保持通过
+- 全部 5 个 Agent + dispatcher 导入验证通过
