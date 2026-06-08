@@ -266,6 +266,7 @@ def _start_agent_process(agent_name: str, dry_run: bool) -> subprocess.Popen | N
 
     # 构建环境变量（继承当前环境 + dry-run 标记）
     env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"  # fix GBK mojibake on Windows terminal
     if dry_run:
         env["LYNXSEC_DRY_RUN"] = "1"
 
