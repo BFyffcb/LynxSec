@@ -166,7 +166,7 @@ JSON 格式（严格按此）：
 - target: 从用户输入中提取目标。如果用户没指定，填 "UNKNOWN"。
 - scan_scope: 一句话描述这次要检测什么。
 - steps: 固定顺序 [recon, pentest, auditor, reporter]。
-- recon_instruction: 自然语言指令，告诉情报Agent该做什么。
+- recon_instruction: 自然语言指令，告诉情报Agent该做什么。不要指定具体端口范围，信报Agent会自行规划。
 - skip_pentest: 如果用户明确说"只看信息不攻击"，填 true；否则 false。
 
 只返回 JSON，不要任何其他文字。"""
