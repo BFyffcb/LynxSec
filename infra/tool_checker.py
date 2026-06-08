@@ -8,12 +8,16 @@ _CST = timezone(timedelta(hours=8))
 AGENT_TOOLS = {
     "recon": [
         {"name": "nmap", "check": "command -v nmap"},
-        {"name": "subfinder", "check": "test -x /root/go/bin/subfinder || command -v subfinder"},
+        {"name": "subfinder", "check": "test -x /root/go/bin/subfinder || test -x /usr/local/bin/subfinder || command -v subfinder"},
+        {"name": "gobuster", "check": "test -x /usr/local/bin/gobuster || command -v gobuster"},
     ],
     "pentest": [
         {"name": "sqlmap", "check": "command -v sqlmap"},
-        {"name": "nuclei", "check": "test -x /root/go/bin/nuclei || command -v nuclei"},
+        {"name": "nuclei", "check": "test -x /root/go/bin/nuclei || test -x /usr/local/bin/nuclei || command -v nuclei"},
         {"name": "hydra", "check": "test -x /usr/bin/hydra"},
+        {"name": "ffuf", "check": "test -x /usr/local/bin/ffuf || command -v ffuf"},
+        {"name": "dalfox", "check": "test -x /usr/local/bin/dalfox || command -v dalfox"},
+        {"name": "testssl", "check": "test -x /usr/local/bin/testssl || command -v testssl"},
     ],
 }
 

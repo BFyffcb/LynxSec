@@ -131,6 +131,12 @@ _RESTRICTED_FLAGS: dict[str, list[str]] = {
         "--dump-all", "--drop-set",
         "--sql-query",
     ],
+    # ???????????/????
+    "ffuf": ["-t", "-rate"],
+    "gobuster": ["-t"],
+    # dalfox ????????????????
+    "dalfox": ["--no-color"],
+    "testssl": [],
 }
 
 _NMAP_ALLOWED_SCRIPTS: set[str] = {
@@ -142,8 +148,11 @@ _NMAP_ALLOWED_SCRIPTS: set[str] = {
 # 工具白名单。不在名单里的工具名一律被 _validate_args 拦截。
 # 新增工具时，在此注册后才会放行。
 _ALLOWED_TOOLS: set[str] = {
-    "nmap", "whatweb", "subfinder",
-    "sqlmap", "hydra", "nuclei", "nc",
+    # recon ??
+    "nmap", "subfinder", "gobuster",
+    # pentest ??
+    "sqlmap", "hydra", "nuclei",
+    "ffuf", "dalfox", "testssl",
 }
 
 

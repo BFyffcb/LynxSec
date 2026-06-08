@@ -142,6 +142,42 @@ def test_unknown_tool_blocked_john() -> None:
 # 快捷运行入口
 # ============================================================
 
+
+def test_gobuster_allowed() -> None:
+    _reset()
+    ok, reason = _validate_args("gobuster", ["dir", "-u", "http://localhost", "-w", "common.txt"])
+    assert ok, f"gobuster should be allowed: {reason}"
+
+def test_ffuf_allowed() -> None:
+    _reset()
+    ok, reason = _validate_args("ffuf", ["-u", "http://localhost/FUZZ", "-w", "wordlist.txt"])
+    assert ok, f"ffuf should be allowed: {reason}"
+
+def test_dalfox_allowed() -> None:
+    _reset()
+    ok, reason = _validate_args("dalfox", ["http://localhost"])
+    assert ok, f"dalfox should be allowed: {reason}"
+
+def test_testssl_allowed() -> None:
+    _reset()
+    ok, reason = _validate_args("testssl", ["localhost"])
+    assert ok, f"testssl should be allowed: {reason}"
+
+def test_whatweb_blocked() -> None:
+    _reset()
+    ok, reason = _validate_args("whatweb", ["localhost"])
+    assert not ok, f"whatweb should be blocked as unknown tool: {reason}"
+
+def test_ffuf_t0_blocked() -> None:
+    _reset()
+    ok, reason = _validate_args("ffuf", ["-u", "http://t/FUZZ", "-w", "w.txt", "-t", "0"])
+    assert not ok, f"ffuf -t 0 should be blocked: {reason}"
+
+def test_gobuster_t0_blocked() -> None:
+    _reset()
+    ok, reason = _validate_args("gobuster", ["dir", "-u", "http://t", "-w", "w.txt", "-t", "0"])
+    assert not ok, f"gobuster -t 0 should be blocked: {reason}"
+
 if __name__ == "__main__":
     import traceback
     passed = 0
@@ -165,6 +201,13 @@ if __name__ == "__main__":
         ("nmap SMB script blocked", test_nmap_smb_blocked),
         ("unknown tool msfvenom blocked", test_unknown_tool_blocked),
         ("unknown tool john blocked", test_unknown_tool_blocked_john),
+        ("gobuster dir allowed", test_gobuster_allowed),
+        ("ffuf fuzz allowed", test_ffuf_allowed),
+        ("dalfox XSS allowed", test_dalfox_allowed),
+        ("testssl audit allowed", test_testssl_allowed),
+        ("whatweb removed blocked", test_whatweb_blocked),
+        ("ffuf -t 0 blocked", test_ffuf_t0_blocked),
+        ("gobuster -t 0 blocked", test_gobuster_t0_blocked),
     ]
     for name, fn in tests:
         try:
