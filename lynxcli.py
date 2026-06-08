@@ -243,6 +243,15 @@ def _start_http_server():
 def main():
     dry = "--dry-run" in sys.argv
 
+    # --update-skills: mark knowledge base as updated
+    if "--update-skills" in sys.argv:
+        console.print("[bold]Updating skills knowledge base...[/bold]")
+        from infra.skills.updater import mark_updated, print_update_status
+        mark_updated()
+        print_update_status()
+        console.print("[green]Skills updated.[/green]")
+        sys.exit(0)
+
     _start_http_server()
     if not check_config():
         console.print("[red]config.env missing or incomplete.[/red]")
@@ -258,6 +267,14 @@ def main():
     console.print("\n[dim]  Scanning tool availability...[/dim]")
     from infra.tool_checker import scan_all_tools
     scan_all_tools(ROOT)
+
+    # ---- ??????? ----
+    from infra.skills.updater import check_update_needed, mark_updated, print_update_status
+    if check_update_needed():
+        console.print("[yellow]  [skills] ????? 7 ????[/yellow]")
+        console.print("  [dim]  ?? lyx --update-skills ????[/dim]")
+    else:
+        console.print("[dim]  [skills] ?????[/dim]")
 
     clean_state()
     os.makedirs(STATE, exist_ok=True)

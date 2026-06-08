@@ -30,6 +30,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from infra.llm import LLM  # type: ignore[import-untyped]
 from infra.common import read_json as _read_json, write_json as _write_json  # type: ignore[import-untyped]
+from infra.skills.loader import build_prompt
 
 # ============================================================
 # 常量
@@ -199,7 +200,7 @@ def _generate_human_report(llm: LLM, all_data: dict, target: str) -> str:
     context = "\n".join(context_parts)
 
     print("[报告Agent] 正在生成人话版报告...")
-    report = llm.chat(_SYSTEM_PROMPT_HUMAN, context, thinking_label="生成人话版报告")
+    report = llm.chat(build_prompt(_SYSTEM_PROMPT_HUMAN, "reporter"), context, thinking_label="生成人话版报告")
     return report
 
 
@@ -281,7 +282,7 @@ def _generate_tech_report(llm: LLM, all_data: dict, target: str) -> str:
     context = "\n".join(context_parts)
 
     print("[报告Agent] 正在生成技术版报告...")
-    report = llm.chat(_SYSTEM_PROMPT_TECH, context, thinking_label="生成技术版报告")
+    report = llm.chat(build_prompt(_SYSTEM_PROMPT_TECH, "reporter"), context, thinking_label="生成技术版报告")
     return report
 
 

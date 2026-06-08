@@ -1,19 +1,37 @@
-﻿"""skill 引用文件加载器 — 借鉴 Serenity SKILL 的 references/ 模式。
+"""skill ??????? v2 ? ?? wiki ???? agent ???
 
-auditor.py 通过此模块在运行时加载 references/*.md，拼入 LLM system prompt。
+auditor ?? references/ ???????
+recon / pentest / reporter ?? agent_skills.json ???? wiki ????
 """
 
 from __future__ import annotations
 import os
+import json as _json
+from fnmatch import fnmatch
 
 
 def _ref_dir() -> str:
-    """返回 references/ 目录绝对路径。"""
+    """?? references/ ???????"""
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), "references")
 
 
+def _wiki_dir() -> str:
+    """?? LLM Wiki ???????"""
+    return r"C:\Users\ZhuanZ\.workbuddy\wiki-knowledge\wiki"
+
+
+def _skills_config() -> dict:
+    """?? agent_skills.json ?????"""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent_skills.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return _json.load(f)
+    except (OSError, _json.JSONDecodeError):
+        return {}
+
+
 def load_ref(filename: str) -> str:
-    """读取单个 reference 文件，失败返空字符串。"""
+    """???? reference ???????????"""
     path = os.path.join(_ref_dir(), filename)
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -22,27 +40,70 @@ def load_ref(filename: str) -> str:
         return ""
 
 
-def build_prompt(base_prompt: str) -> str:
-    """拼接所有 references 到 base prompt 后面，生成完整 system prompt。
+def load_wiki_file(filename: str) -> str:
+    """???? wiki ??????? glob ???????????"""
+    wdir = _wiki_dir()
+    if "*" in filename or "?" in filename:
+        # Glob match: pick first match
+        try:
+            for entry in os.listdir(wdir):
+                if fnmatch(entry, filename) and entry.endswith(".md"):
+                    filename = entry
+                    break
+        except OSError:
+            return ""
+    path = os.path.join(wdir, filename)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+        # Skip YAML frontmatter for cleaner context
+        if text.startswith("---"):
+            idx = text.find("---", 3)
+            if idx != -1:
+                text = text[idx + 3:].strip()
+        return text
+    except OSError:
+        return ""
+
+
+def build_prompt(base_prompt: str, agent: str = "auditor") -> str:
+    """?? references + wiki ??? base prompt?
 
     Args:
-        base_prompt: auditor.py 的 _SYSTEM_PROMPT_AUDIT 原始内容
+        base_prompt: ?? system prompt
+        agent: ?? agent ? (auditor/recon/pentest/reporter)
 
     Returns:
-        包含 references 知识的完整 prompt
+        ???????? system prompt
     """
-    refs = [
-        ("false-positive-rules.md", "误报排除规则表"),
-        ("owasp-top10.md", "OWASP Top 10 (2021) Checklist"),
-        ("cvss-scoring.md", "CVSS 3.1 评分标准"),
-    ]
-    rules_blocks: list[str] = []
-    for filename, label in refs:
+    config = _skills_config()
+    agent_cfg = config.get(agent, {})
+
+    blocks = []
+
+    # 1. Local references (for auditor)
+    local_refs = agent_cfg.get("local_refs", [])
+    for filename in local_refs:
         text = load_ref(filename)
         if text:
-            rules_blocks.append(f"### {label}\n{text}")
+            label = filename.replace(".md", "").replace("-", " ").title()
+            blocks.append(f"### {label}\n{text}")
 
-    if not rules_blocks:
+    # 2. Wiki knowledge files
+    wiki_files = agent_cfg.get("wiki_files", [])
+    if wiki_files:
+        wiki_blocks = []
+        for filename in wiki_files:
+            text = load_wiki_file(filename)
+            if text:
+                # Trim to 6000 chars to avoid context overflow
+                if len(text) > 6000:
+                    text = text[:6000] + "\n\n... (truncated)"
+                wiki_blocks.append(text)
+        if wiki_blocks:
+            blocks.append("### Wiki ???\n" + "\n\n---\n\n".join(wiki_blocks))
+
+    if not blocks:
         return base_prompt
 
-    return base_prompt + "\n\n---\n\n## 审计参考知识\n" + "\n".join(rules_blocks)
+    return base_prompt + "\n\n---\n\n## ????\n" + "\n".join(blocks)

@@ -1,0 +1,83 @@
+{
+  "auditor": {
+    "description": "??????????? + OWASP + CVSS + ????",
+    "wiki_files": [
+      "code-audit.md",
+      "cwe-top25.md",
+      "cnnvd-integration.md",
+      "cybersecurity-law.md",
+      "owasp-asvs-complete.md",
+      "ptes-complete.md",
+      "dengbao2.md",
+      "dengbao2-extensions.md",
+      "security-management.md",
+      "ceh-complete.md",
+      "final-four-standards.md",
+      "oscp-full.md",
+      "security-cert-gaps.md",
+      "cissp-complete.md"
+    ],
+    "local_refs": [
+      "owasp-top10.md",
+      "cvss-scoring.md",
+      "false-positive-rules.md"
+    ]
+  },
+  "recon": {
+    "description": "??????????? + ???? + ???? + ???",
+    "wiki_files": [
+      "computer-networking.md",
+      "linux-shell.md",
+      "security-tools-map.md",
+      "security-tools-guide.md",
+      "trusted-sources.md",
+      "tool-tiers.md",
+      "tool-usage-rules.md",
+      "python-basics.md"
+    ],
+    "local_refs": []
+  },
+  "pentest": {
+    "description": "???????12??????? + ??/AD/???",
+    "wiki_files": [
+      "rce-attacks.md",
+      "ssrf-jwt-attacks.md",
+      "file-upload-attacks.md",
+      "csrf-attacks.md",
+      "lfi-rfi-attacks.md",
+      "xxe-attacks.md",
+      "mysql-basics.md",
+      "cryptography.md",
+      "ad-attack-chain.md",
+      "kerberos-delegation.md",
+      "frida-mobile.md",
+      "mobile-security.md",
+      "php-basics.md",
+      "javascript.md",
+      "html-css.md",
+      "java-security.md",
+      "c-security.md",
+      "prompt-injection.md",
+      "android-reverse.md",
+      "windows-reverse.md",
+      "portswigger-path.md",
+      "web-security-knowledge.md",
+      "web-security-portswigger-vulns.md",
+      "pwn-practice.md",
+      "ctf-guide.md"
+    ],
+    "local_refs": []
+  },
+  "reporter": {
+    "description": "???????PTES?? + ???? + CVE??",
+    "wiki_files": [
+      "pentest-reporting.md",
+      "report-template-v2.md",
+      "cve-weekly-2026-06-01.md",
+      "cve-weekly-2026-05-30.md",
+      "dvwa-case-001.md",
+      "dvwa-case-002.md"
+    ],
+    "local_refs": []
+  }
+}

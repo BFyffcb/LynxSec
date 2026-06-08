@@ -36,6 +36,7 @@ if _PROJECT_ROOT not in sys.path:
 from infra.llm import LLM           # type: ignore[import-untyped]
 from infra.tools import run_tool     # type: ignore[import-untyped]
 from infra.common import read_json as _read_json, write_json as _write_json  # type: ignore[import-untyped]
+from infra.skills.loader import build_prompt
 
 # ============================================================
 # 常量配置
@@ -159,7 +160,7 @@ def _plan_tools(llm: LLM, command: dict) -> list[dict]:
     context = json.dumps(command, ensure_ascii=False, indent=2)
 
     print("[情报Agent] 正在分析任务，规划侦察策略...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_PLAN, context, thinking_label="规划侦察策略")
+    raw_reply = llm.chat(build_prompt(_SYSTEM_PROMPT_PLAN, "recon"), context, thinking_label="规划侦察策略")
 
     cleaned = raw_reply.strip()
     if cleaned.startswith("```"):
@@ -247,7 +248,7 @@ def _summarize_results(llm: LLM, tool_results: list[dict], target: str) -> dict:
 
     context = "\n".join(context_parts)
     print("[情报Agent] 正在分析扫描结果...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_SUMMARIZE, context, thinking_label="分析侦察结果")
+    raw_reply = llm.chat(build_prompt(_SYSTEM_PROMPT_SUMMARIZE, "recon"), context, thinking_label="分析侦察结果")
 
     cleaned = raw_reply.strip()
     if cleaned.startswith("```"):
