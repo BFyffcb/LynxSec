@@ -5,424 +5,427 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LynxSec — 网络安全 Agent 管理平台</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<script src="https://unpkg.com/recharts@2/umd/Recharts.js"></script>
 <script>
 tailwind.config = {
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#eefbf3', 100: '#d6f5e0', 200: '#b0eac5',
-          300: '#7dd9a3', 400: '#48c07d', 500: '#25a55f',
-          600: '#16864b', 700: '#126a3e', 800: '#115433',
-          900: '#0f452c', 950: '#072717',
+        // Agent-specific accent palette
+        agent: {
+          dispatcher: '#00d4aa',
+          recon:      '#4da6ff',
+          pentest:    '#ff6b6b',
+          auditor:    '#c084fc',
+          reporter:   '#fbbf24',
         },
         surface: {
-          DEFAULT: '#0a0e14',
-          50: '#f6f7f9', 100: '#eceef2', 200: '#d4d9e3',
-          300: '#aeb9cc', 400: '#8293b0', 500: '#627597',
-          600: '#4e5e7d', 700: '#404d66', 800: '#384256',
-          900: '#32394a', 950: '#0a0e14',
+          900: '#080c12',
+          800: '#0d1219',
+          700: '#111720',
+          600: '#161d28',
+          500: '#1c2430',
+          400: '#243041',
         },
-        cyber: {
-          green: '#25a55f',
-          red: '#e74c3c',
-          orange: '#f39c12',
-          blue: '#3498db',
-          purple: '#9b59b6',
-          teal: '#1abc9c',
-        }
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'monospace'],
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-      }
-    }
-  }
+        mono:  ['JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'monospace'],
+        sans:  ['Inter', 'system-ui', '-apple-system', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
+        display: ['Inter', 'system-ui', '-apple-system', 'PingFang SC', 'sans-serif'],
+      },
+    },
+  },
 }
 </script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ===== FONTS ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: #0a0e14;
-  color: #d4d9e3;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  background: #080c12;
+  color: #c8d2e0;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #141b24; }
-::-webkit-scrollbar-thumb { background: #2a3544; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3d4d61; }
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:#0d1219; }
+::-webkit-scrollbar-thumb { background:#243041; border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:#344860; }
 
-.terminal-line {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
-  line-height: 1.8;
+/* ===== SCANLINE OVERLAY ===== */
+body::after {
+  content: '';
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.015) 2px,
+    rgba(0,0,0,0.015) 4px
+  );
+  pointer-events: none; z-index:9998;
 }
 
-.agent-card { transition: all 0.2s ease; }
-.agent-card:hover { transform: translateY(-2px); }
-
-.pulse-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(37, 165, 95, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(37, 165, 95, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 165, 95, 0); }
-}
-
-.pulse-dot.warn {
-  animation-name: pulse-warn;
-}
-@keyframes pulse-warn {
-  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(243, 156, 18, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
-}
-
-.pulse-dot.danger {
-  animation-name: pulse-danger;
-}
-@keyframes pulse-danger {
-  0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
-}
-
-.glass {
-  background: rgba(20, 27, 36, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.glow-text { text-shadow: 0 0 20px rgba(37, 165, 95, 0.3); }
-
+/* ===== GRID BACKGROUND ===== */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(37, 165, 95, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 165, 95, 0.03) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(rgba(0,212,170,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,170,0.018) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-.slide-in { animation: slideIn 0.3s ease-out; }
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+/* ===== STATUS INDICATORS ===== */
+.status-ring {
+  display:inline-flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.status-ring::before {
+  content:''; width:8px; height:8px; border-radius:50%; display:block;
+}
+.status-ring::after {
+  content:''; position:absolute; width:16px; height:16px; border-radius:50%;
+  border:1px solid transparent; opacity:0;
+}
+.status-ring.idle::before   { background:#00d4aa; box-shadow:0 0 6px rgba(0,212,170,0.5); }
+.status-ring.working::before { background:#4da6ff; box-shadow:0 0 8px rgba(77,166,255,0.6); }
+.status-ring.working::after  { border-color:rgba(77,166,255,0.3); opacity:1; animation:ring-pulse 2s infinite; }
+.status-ring.blocked::before { background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,0.6); }
+.status-ring.blocked::after  { border-color:rgba(245,158,11,0.3); opacity:1; animation:ring-pulse 2s infinite; }
+.status-ring.running::before { background:#4da6ff; box-shadow:0 0 8px rgba(77,166,255,0.6); }
+.status-ring.running::after  { border-color:rgba(77,166,255,0.3); opacity:1; animation:ring-pulse 2s infinite; }
+.status-ring.halted::before  { background:#f59e0b; box-shadow:0 0 8px rgba(245,158,11,0.6); }
+.status-ring.completed::before { background:#00d4aa; box-shadow:0 0 6px rgba(0,212,170,0.5); }
+.status-ring.offline::before { background:#374151; box-shadow:none; }
+
+@keyframes ring-pulse {
+  0%   { transform:scale(0.8); opacity:0.8; }
+  100% { transform:scale(1.6); opacity:0; }
 }
 
-.tab-active {
-  color: #25a55f;
-  border-bottom: 2px solid #25a55f;
+/* ===== RESULT BADGES ===== */
+.badge {
+  font-size:9px; padding:2px 7px; border-radius:3px;
+  font-family:'JetBrains Mono',monospace; font-weight:500;
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.badge.success { background:rgba(0,212,170,0.12); color:#00d4aa; border:1px solid rgba(0,212,170,0.2); }
+.badge.failed  { background:rgba(255,107,107,0.12); color:#ff6b6b; border:1px solid rgba(255,107,107,0.2); }
+.badge.skipped { background:rgba(148,163,184,0.1);  color:#94a3b8; border:1px solid rgba(148,163,184,0.15); }
+.badge.blocked { background:rgba(245,158,11,0.12);  color:#f59e0b; border:1px solid rgba(245,158,11,0.2); }
+
+/* ===== GLASS CARDS ===== */
+.glass {
+  background: rgba(13,18,25,0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.glass:hover {
+  border-color: rgba(255,255,255,0.1);
 }
 
-.log-line { opacity: 0; animation: fadeInLine 0.15s ease forwards; }
-@keyframes fadeInLine {
-  from { opacity: 0; transform: translateX(-4px); }
-  to { opacity: 1; transform: translateX(0); }
+/* ===== SUMMARY CARDS ===== */
+.summary-card {
+  position:relative; overflow:hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.summary-card:hover {
+  transform:translateY(-2px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+.summary-card .card-icon {
+  position:absolute; right:12px; top:12px;
+  font-size:20px; opacity:0.15;
+  transition:opacity 0.3s;
+}
+.summary-card:hover .card-icon { opacity:0.3; }
+
+/* ===== AGENT ROW ===== */
+.agent-row {
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+}
+.agent-row:hover {
+  background: rgba(255,255,255,0.02);
+  border-left-color: currentColor;
+}
+
+/* ===== PIPELINE ===== */
+.pipe-step {
+  width:22px; height:22px; border-radius:50%;
+  border:2px solid #1c2430; background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace;
+  transition:all 0.4s cubic-bezier(0.4,0,0.2,1);
+  position:relative;
+}
+.pipe-step.done {
+  border-color:#00d4aa; background:rgba(0,212,170,0.1); color:#00d4aa;
+  box-shadow: 0 0 8px rgba(0,212,170,0.15);
+}
+.pipe-step.active {
+  border-color:#4da6ff; background:rgba(77,166,255,0.1); color:#4da6ff;
+  box-shadow: 0 0 12px rgba(77,166,255,0.2);
+  animation:pipe-active 2s infinite;
+}
+@keyframes pipe-active {
+  0%,100% { box-shadow:0 0 8px rgba(77,166,255,0.15); }
+  50%     { box-shadow:0 0 16px rgba(77,166,255,0.35); }
+}
+.pipe-step.pending { border-color:#1c2430; color:#374151; }
+.pipe-connector {
+  width:32px; height:2px; background:#1c2430;
+  transition:background 0.4s;
+}
+.pipe-connector.done { background:#00d4aa; }
+
+/* ===== TERMINAL ===== */
+.term { font-family:'JetBrains Mono','Fira Code',monospace; font-size:12px; line-height:1.9; }
+.term .ts  { color:#374151; }
+.term .cmd { color:#4da6ff; }
+.term .info{ color:#7c8ba0; }
+.term .warn{ color:#f59e0b; }
+.term .err { color:#ff6b6b; }
+.term .ok  { color:#00d4aa; }
+.term .dim { color:#374151; }
+
+/* ===== NAVIGATION ===== */
+.nav-link {
+  transition: all 0.2s;
+  border-radius: 6px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.nav-link:hover { background: rgba(255,255,255,0.04); color:#e2e8f0; }
+.nav-link.active {
+  color:#00d4aa;
+  background: rgba(0,212,170,0.08);
+  font-weight:600;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ===== TOOLTIP ===== */
+[data-tooltip] { position:relative; }
+[data-tooltip]:hover::after {
+  content:attr(data-tooltip);
+  position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
+  background:#161d28; color:#c8d2e0; font-size:11px; padding:4px 8px;
+  border-radius:4px; white-space:nowrap; z-index:100;
+  border:1px solid rgba(255,255,255,0.08);
+  pointer-events:none;
+}
+
+/* ===== TOAST ===== */
+.toast {
+  position:fixed; bottom:28px; right:28px; z-index:9999;
+  padding:10px 18px; border-radius:8px; font-size:13px;
+  font-weight:500;
+  backdrop-filter: blur(16px);
+  border:1px solid rgba(255,255,255,0.08);
+  animation:slideUp 0.3s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ===== TAB CONTENT ===== */
+.tab-content { animation: fadeInUp 0.35s ease; }
+
+/* ===== PROGRESS BAR ===== */
+.bar-track { background:rgba(255,255,255,0.03); border-radius:3px; overflow:hidden; height:3px; }
+.bar-fill { height:100%; border-radius:3px; transition:width 0.8s cubic-bezier(0.4,0,0.2,1); position:relative; }
+.bar-fill::after {
+  content:''; position:absolute; right:0; top:0; bottom:0;
+  width:20px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,0.2));
+}
+
+/* ===== LOGO ===== */
+.logo-mark {
+  width:34px; height:34px;
+  background: linear-gradient(135deg, #00d4aa 0%, #0891b2 100%);
+  border-radius: 8px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow: 0 0 20px rgba(0,212,170,0.2);
+  position:relative;
+}
+.logo-mark::after {
+  content:''; position:absolute; inset:-1px; border-radius:9px;
+  background:linear-gradient(135deg, rgba(0,212,170,0.3), transparent);
+  z-index:-1;
+}
+.logo-text {
+  font-weight:800; font-size:15px; color:#080c12;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar-divider {
+  height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+}
+
+/* ===== LINK GLOW ===== */
+.glow-text {
+  text-shadow: 0 0 20px rgba(0,212,170,0.3);
 }
 </style>
 </head>
 <body class="grid-bg">
 
-<!-- Layout Container -->
+<!-- ===== TOAST ===== -->
+<div id="toast" class="toast" style="display:none"></div>
+
 <div class="flex h-screen overflow-hidden">
 
-  <!-- Sidebar -->
-  <aside class="w-56 bg-[#0d1117] border-r border-white/5 flex flex-col flex-shrink-0">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="w-56 bg-[#0a0f16] border-r border-white/5 flex flex-col flex-shrink-0">
     <!-- Logo -->
     <div class="px-5 py-5 border-b border-white/5">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded bg-gradient-to-br from-cyber-green to-cyber-teal flex items-center justify-center">
-          <span class="text-black font-bold text-sm">L</span>
+      <div class="flex items-center gap-3">
+        <div class="logo-mark">
+          <span class="logo-text">L</span>
         </div>
         <div>
-          <h1 class="text-sm font-bold text-white tracking-wide">LynxSec</h1>
-          <p class="text-[10px] text-gray-500 font-mono">v2.4.1</p>
+          <h1 class="text-sm font-bold text-white tracking-wide glow-text">LynxSec</h1>
+          <p class="text-[10px] text-gray-500 font-mono tracking-wider" id="versionTag">v0.2.0</p>
         </div>
       </div>
     </div>
 
-    <!-- Nav -->
-    <nav class="flex-1 px-3 py-4 space-y-0.5" id="sidebarNav">
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors active" data-tab="dashboard">
-        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> 仪表盘
+    <!-- Navigation -->
+    <nav class="flex-1 px-3 py-5 space-y-1">
+      <div class="text-[9px] text-gray-600 uppercase tracking-[0.15em] px-3 mb-3 font-semibold">导航</div>
+      <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm active" data-tab="dashboard">
+        <span class="text-base w-5 text-center">📊</span> 仪表盘
       </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="agents">
-        <i data-lucide="bot" class="w-4 h-4"></i> Agent 管理
+      <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400" data-tab="agents">
+        <span class="text-base w-5 text-center">🤖</span> Agent 状态
       </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="tasks">
-        <i data-lucide="list-checks" class="w-4 h-4"></i> 任务中心
+      <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400" data-tab="pipeline">
+        <span class="text-base w-5 text-center">🔗</span> 任务流水线
       </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="tools">
-        <i data-lucide="wrench" class="w-4 h-4"></i> 工具集
+      <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400" data-tab="tools">
+        <span class="text-base w-5 text-center">🔧</span> 工具集
       </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="alerts">
-        <i data-lucide="shield-alert" class="w-4 h-4"></i> 威胁告警
-        <span class="ml-auto bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-full font-mono">3</span>
-      </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="reports">
-        <i data-lucide="file-text" class="w-4 h-4"></i> 报告中心
-      </a>
-      <a href="#" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-gray-400 hover:bg-white/5 hover:text-white transition-colors" data-tab="settings">
-        <i data-lucide="settings" class="w-4 h-4"></i> 系统配置
+      <a href="#" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm text-gray-400" data-tab="reports">
+        <span class="text-base w-5 text-center">📄</span> 报告输出
       </a>
     </nav>
 
     <!-- Bottom status -->
     <div class="px-4 py-4 border-t border-white/5">
-      <div class="flex items-center gap-2 text-xs text-gray-500">
-        <div class="pulse-dot bg-cyber-green"></div>
-        <span>系统运行中</span>
-        <span class="ml-auto font-mono text-[10px]">99.9%</span>
+      <div class="sidebar-divider mb-3"></div>
+      <div class="flex items-center gap-2 text-xs" id="sidebarStatus">
+        <span class="spin inline-block w-3 h-3 border-2 border-gray-600 border-t-[#00d4aa] rounded-full"></span>
+        <span class="text-gray-500 text-[11px]">加载中...</span>
       </div>
-      <div class="mt-2 flex items-center gap-2 text-xs text-gray-600 font-mono">
-        <span>PID: 28491</span>
-        <span class="ml-auto">UTC+8</span>
-      </div>
+      <div class="mt-2 text-[10px] text-gray-600 font-mono tracking-wider" id="sidebarClock"></div>
+      <div class="mt-1 text-[9px] text-gray-700 font-mono">LynxSec Engine</div>
     </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- ===== MAIN ===== -->
   <main class="flex-1 flex flex-col overflow-hidden">
 
-    <!-- Top Bar -->
-    <header class="h-14 border-b border-white/5 flex items-center justify-between px-6 flex-shrink-0 glass">
-      <div class="flex items-center gap-4">
-        <h2 class="text-sm font-semibold text-white" id="pageTitle">仪表盘</h2>
-        <span class="text-[10px] text-gray-600 font-mono bg-white/5 px-2 py-0.5 rounded">PROD</span>
+    <!-- Top bar -->
+    <header class="h-12 border-b border-white/5 flex items-center justify-between px-6 flex-shrink-0" style="background:rgba(10,15,22,0.9); backdrop-filter:blur(12px);">
+      <div class="flex items-center gap-3">
+        <h2 class="text-sm font-semibold text-white tracking-wide" id="pageTitle">仪表盘</h2>
+        <span class="text-[9px] text-gray-700 font-mono bg-white/5 px-2 py-0.5 rounded border border-white/5">PROD</span>
       </div>
-      <div class="flex items-center gap-4">
-        <!-- Quick stats -->
-        <div class="flex items-center gap-4 text-xs">
-          <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-cyber-green"></span>
-            <span class="text-gray-400">Agent</span>
-            <span class="text-white font-mono font-semibold">5/5</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-cyber-blue"></span>
-            <span class="text-gray-400">任务</span>
-            <span class="text-white font-mono font-semibold">12</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-cyber-red"></span>
-            <span class="text-gray-400">告警</span>
-            <span class="text-white font-mono font-semibold">3</span>
-          </div>
-        </div>
-        <div class="w-px h-5 bg-white/10"></div>
-        <div class="flex items-center gap-2 text-xs">
-          <div class="w-7 h-7 rounded-full bg-cyber-green/20 flex items-center justify-center">
-            <span class="text-cyber-green font-semibold text-xs">九</span>
-          </div>
-          <span class="text-gray-400">九点</span>
-        </div>
+      <div class="flex items-center gap-5 text-[11px]">
+        <span id="topAgentCount" class="text-gray-400"></span>
+        <span id="topTaskId" class="text-gray-600 font-mono text-[10px]"></span>
       </div>
     </header>
 
-    <!-- Tab Content -->
+    <!-- Content area -->
     <div class="flex-1 overflow-auto p-6">
 
-      <!-- ====== DASHBOARD TAB ====== -->
-      <div id="tab-dashboard" class="tab-content space-y-6">
+      <!-- ===== TAB: DASHBOARD ===== -->
+      <div id="tab-dashboard" class="tab-content space-y-5">
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-4 gap-4">
-          <div class="glass rounded-lg p-4 slide-in">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-gray-500 uppercase tracking-wider">活跃 Agent</span>
-              <i data-lucide="bot" class="w-4 h-4 text-cyber-green"></i>
-            </div>
-            <div class="text-2xl font-bold text-white font-mono">5<span class="text-sm text-gray-500 font-normal">/5</span></div>
-            <div class="mt-2 flex items-center gap-1 text-[11px] text-cyber-green">
-              <i data-lucide="trending-up" class="w-3 h-3"></i> 全部在线
-            </div>
+        <!-- Summary cards -->
+        <div class="grid grid-cols-5 gap-3" id="summaryCards"></div>
+
+        <!-- Agent overview + pipeline mini -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="glass p-5">
+            <h3 class="text-[10px] text-gray-500 uppercase tracking-[0.2em] mb-4 font-semibold">Agent 运行状态</h3>
+            <div class="space-y-1" id="dashAgentList"></div>
           </div>
-
-          <div class="glass rounded-lg p-4 slide-in" style="animation-delay: 0.05s">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-gray-500 uppercase tracking-wider">今日扫描</span>
-              <i data-lucide="search" class="w-4 h-4 text-cyber-blue"></i>
-            </div>
-            <div class="text-2xl font-bold text-white font-mono">1,247</div>
-            <div class="mt-2 flex items-center gap-1 text-[11px] text-cyber-blue">
-              <i data-lucide="trending-up" class="w-3 h-3"></i> +23% vs 昨日
-            </div>
-          </div>
-
-          <div class="glass rounded-lg p-4 slide-in" style="animation-delay: 0.1s">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-gray-500 uppercase tracking-wider">威胁检出</span>
-              <i data-lucide="shield-alert" class="w-4 h-4 text-cyber-red"></i>
-            </div>
-            <div class="text-2xl font-bold text-white font-mono">28</div>
-            <div class="mt-2 flex items-center gap-1 text-[11px] text-cyber-red">
-              <i data-lucide="alert-triangle" class="w-3 h-3"></i> 3 高危
-            </div>
-          </div>
-
-          <div class="glass rounded-lg p-4 slide-in" style="animation-delay: 0.15s">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs text-gray-500 uppercase tracking-wider">平均响应</span>
-              <i data-lucide="clock" class="w-4 h-4 text-cyber-purple"></i>
-            </div>
-            <div class="text-2xl font-bold text-white font-mono">1.8<span class="text-sm text-gray-500 font-normal">s</span></div>
-            <div class="mt-2 flex items-center gap-1 text-[11px] text-cyber-purple">
-              <i data-lucide="zap" class="w-3 h-3"></i> 低于 SLA 3s
-            </div>
+          <div class="glass p-5">
+            <h3 class="text-[10px] text-gray-500 uppercase tracking-[0.2em] mb-4 font-semibold">当前流水线</h3>
+            <div id="dashPipeline"></div>
           </div>
         </div>
 
-        <!-- Charts Row -->
-        <div class="grid grid-cols-2 gap-4">
-          <!-- Activity Chart -->
-          <div class="glass rounded-lg p-5">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-white">扫描活动趋势</h3>
-              <span class="text-[10px] text-gray-500 font-mono">过去 24 小时</span>
-            </div>
-            <div id="activityChart" class="h-52"></div>
-          </div>
-
-          <!-- Threat Distribution -->
-          <div class="glass rounded-lg p-5">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-white">威胁分布</h3>
-              <span class="text-[10px] text-gray-500 font-mono">近 7 天</span>
-            </div>
-            <div id="threatChart" class="h-52"></div>
-          </div>
-        </div>
-
-        <!-- Agent Status + Recent Tasks -->
-        <div class="grid grid-cols-2 gap-4">
-          <!-- Agent Cards -->
-          <div class="glass rounded-lg p-5">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-white">Agent 运行状态</h3>
-              <button class="text-[10px] text-cyber-green hover:underline font-mono">查看全部</button>
-            </div>
-            <div class="space-y-3" id="agentList"></div>
-          </div>
-
-          <!-- Recent Tasks -->
-          <div class="glass rounded-lg p-5">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-sm font-semibold text-white">最近任务</h3>
-              <button class="text-[10px] text-cyber-green hover:underline font-mono">任务中心 →</button>
-            </div>
-            <div class="space-y-2" id="recentTasks"></div>
-          </div>
+        <!-- Recent outputs -->
+        <div class="glass p-5">
+          <h3 class="text-[10px] text-gray-500 uppercase tracking-[0.2em] mb-4 font-semibold">最近产出</h3>
+          <div class="space-y-0.5 term" id="dashOutputs" style="max-height:220px; overflow-y:auto;"></div>
         </div>
       </div>
 
-      <!-- ====== AGENTS TAB ====== -->
+      <!-- ===== TAB: AGENTS ===== -->
       <div id="tab-agents" class="tab-content hidden">
-        <div class="glass rounded-lg p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-semibold text-white">Agent 实例管理</h3>
-            <button class="bg-cyber-green hover:bg-cyber-green/90 text-black text-xs font-semibold px-3 py-1.5 rounded transition-colors">+ 新建 Agent</button>
+        <div class="glass p-5">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-semibold text-white">Agent 实例详情</h3>
+            <span class="text-[10px] text-gray-500 font-mono" id="agentRefreshHint"></span>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-left text-gray-500 text-[11px] uppercase tracking-wider border-b border-white/5">
-                  <th class="pb-3 font-medium">Agent</th>
-                  <th class="pb-3 font-medium">类型</th>
-                  <th class="pb-3 font-medium">状态</th>
-                  <th class="pb-3 font-medium">今日任务</th>
-                  <th class="pb-3 font-medium">成功率</th>
-                  <th class="pb-3 font-medium">最后活跃</th>
-                  <th class="pb-3 font-medium">操作</th>
+                <tr class="text-left text-gray-500 text-[10px] uppercase tracking-wider border-b border-white/5">
+                  <th class="pb-3 font-semibold">Agent</th>
+                  <th class="pb-3 font-semibold">状态</th>
+                  <th class="pb-3 font-semibold">当前任务</th>
+                  <th class="pb-3 font-semibold">最近结果</th>
+                  <th class="pb-3 font-semibold">产出文件</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-white/5" id="agentsTableBody"></tbody>
+              <tbody class="divide-y divide-white/5" id="agentsFullTable"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- ====== TASKS TAB ====== -->
-      <div id="tab-tasks" class="tab-content hidden">
-        <div class="glass rounded-lg p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-semibold text-white">任务队列</h3>
-            <div class="flex gap-2">
-              <button class="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 transition-colors">全部</button>
-              <button class="text-[10px] text-cyber-green px-2 py-1 rounded border border-cyber-green/30">运行中</button>
-              <button class="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 transition-colors">已完成</button>
-              <button class="text-[10px] text-gray-400 hover:text-white px-2 py-1 rounded border border-white/10 transition-colors">失败</button>
-            </div>
-          </div>
-          <div id="terminalOutput" class="bg-black/40 rounded-lg p-4 font-mono text-xs h-96 overflow-y-auto border border-white/5">
-            <!-- Terminal content injected by JS -->
-          </div>
+      <!-- ===== TAB: PIPELINE ===== -->
+      <div id="tab-pipeline" class="tab-content hidden">
+        <div class="glass p-5">
+          <h3 class="text-sm font-semibold text-white mb-5">任务流水线详情</h3>
+          <div id="pipelineDetail"></div>
         </div>
       </div>
 
-      <!-- ====== TOOLS TAB ====== -->
+      <!-- ===== TAB: TOOLS ===== -->
       <div id="tab-tools" class="tab-content hidden">
-        <div class="grid grid-cols-3 gap-4" id="toolsGrid"></div>
-      </div>
-
-      <!-- ====== ALERTS TAB ====== -->
-      <div id="tab-alerts" class="tab-content hidden">
-        <div class="glass rounded-lg p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-base font-semibold text-white">威胁告警中心</h3>
-            <div class="flex gap-2">
-              <span class="bg-red-500/10 text-red-400 text-[10px] px-2 py-1 rounded-full border border-red-500/20 font-mono">高危 3</span>
-              <span class="bg-orange-500/10 text-orange-400 text-[10px] px-2 py-1 rounded-full border border-orange-500/20 font-mono">中危 7</span>
-              <span class="bg-blue-500/10 text-blue-400 text-[10px] px-2 py-1 rounded-full border border-blue-500/20 font-mono">低危 18</span>
-            </div>
-          </div>
-          <div class="space-y-3" id="alertsList"></div>
+        <div class="glass p-5">
+          <h3 class="text-sm font-semibold text-white mb-5">工具可用性矩阵</h3>
+          <div class="grid grid-cols-2 gap-3" id="toolsGrid"></div>
         </div>
       </div>
 
-      <!-- ====== REPORTS TAB ====== -->
+      <!-- ===== TAB: REPORTS ===== -->
       <div id="tab-reports" class="tab-content hidden">
-        <div class="glass rounded-lg p-6">
-          <h3 class="text-base font-semibold text-white mb-6">安全报告</h3>
-          <div class="grid grid-cols-2 gap-4" id="reportsGrid"></div>
-        </div>
-      </div>
-
-      <!-- ====== SETTINGS TAB ====== -->
-      <div id="tab-settings" class="tab-content hidden">
-        <div class="glass rounded-lg p-6 max-w-2xl">
-          <h3 class="text-base font-semibold text-white mb-6">系统配置</h3>
-          <div class="space-y-4">
-            <div>
-              <label class="text-xs text-gray-400 block mb-1.5">扫描并发数</label>
-              <input type="number" value="10" class="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-cyber-green/50">
-            </div>
-            <div>
-              <label class="text-xs text-gray-400 block mb-1.5">超时阈值 (秒)</label>
-              <input type="number" value="300" class="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-cyber-green/50">
-            </div>
-            <div>
-              <label class="text-xs text-gray-400 block mb-1.5">通知 Webhook</label>
-              <input type="text" value="https://hooks.slack.com/..." class="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-cyber-green/50">
-            </div>
-            <div class="flex items-center justify-between py-2">
-              <span class="text-sm text-gray-300">自动修复</span>
-              <button class="w-10 h-5 rounded-full bg-cyber-green relative transition-colors" onclick="this.classList.toggle('bg-gray-700'); this.classList.toggle('bg-cyber-green')"><span class="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span></button>
-            </div>
-            <div class="flex items-center justify-between py-2">
-              <span class="text-sm text-gray-300">调试模式</span>
-              <button class="w-10 h-5 rounded-full bg-gray-700 relative transition-colors" onclick="this.classList.toggle('bg-gray-700'); this.classList.toggle('bg-cyber-green')"><span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform"></span></button>
-            </div>
-          </div>
+        <div class="glass p-5">
+          <h3 class="text-sm font-semibold text-white mb-5">报告输出目录</h3>
+          <div id="reportsList"></div>
         </div>
       </div>
 
@@ -430,303 +433,474 @@ body {
   </main>
 </div>
 
+<!-- ===== MAIN SCRIPT ===== -->
 <script>
-// ========== Navigation ==========
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', (e) => {
+// ========== STATE ==========
+const STATE_DIR = '../state/';
+const AGENT_KEYS = ['recon', 'pentest', 'auditor', 'reporter'];
+
+const AGENT_META = {
+  dispatcher: { label:'调度器',   color:'#00d4aa', icon:'🎯' },
+  recon:      { label:'情报收集', color:'#4da6ff', icon:'🔍' },
+  pentest:    { label:'渗透测试', color:'#ff6b6b', icon:'⚔️' },
+  auditor:    { label:'安全审计', color:'#c084fc', icon:'🛡️' },
+  reporter:   { label:'报告生成', color:'#fbbf24', icon:'📋' },
+};
+const AGENT_ORDER = ['dispatcher', 'recon', 'pentest', 'auditor', 'reporter'];
+
+let agentData   = {};
+let pipelineData= {};
+let toolsData   = {};
+
+// ========== FETCH ==========
+async function fetchJSON(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${res.status} ${path}`);
+  return res.json();
+}
+
+async function loadAll() {
+  const results = await Promise.allSettled([
+    fetchJSON(STATE_DIR + 'recon_status.json'),
+    fetchJSON(STATE_DIR + 'pentest_status.json'),
+    fetchJSON(STATE_DIR + 'auditor_status.json'),
+    fetchJSON(STATE_DIR + 'reporter_status.json'),
+    fetchJSON(STATE_DIR + 'pipeline.json'),
+    fetchJSON(STATE_DIR + 'tools_available.json'),
+  ]);
+
+  const files = ['recon','pentest','auditor','reporter','pipeline','tools'];
+  const ok = results.filter(r => r.status === 'fulfilled').length;
+  const total = results.length;
+
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      if (i < 4) agentData[files[i]] = r.value;
+      else if (i === 4) pipelineData = r.value;
+      else toolsData = r.value;
+    } else {
+      if (i < 4) {
+        agentData[files[i]] = {
+          status: 'offline',
+          result: null,
+          current_task: null,
+          outputs: [],
+        };
+      }
+    }
+  });
+
+  agentData.dispatcher = {
+    status: pipelineData.status || 'idle',
+    result: null,
+    current_task: pipelineData.current_step || null,
+    outputs: [],
+  };
+
+  document.getElementById('sidebarStatus').innerHTML =
+    `<span class="status-ring idle"></span><span class="text-gray-500 text-[11px]">${ok}/${total} 数据源就绪</span>`;
+  if (ok < total) showToast('部分数据源加载失败', 'warn');
+  else showToast('数据同步完成', 'ok');
+
+  renderAll();
+}
+
+// ========== HELPERS ==========
+function statusRing(status) {
+  return `<span class="status-ring ${status || 'idle'}"></span>`;
+}
+
+function statusText(status) {
+  const map = {
+    idle:'空闲', working:'执行中', running:'运行中',
+    blocked:'阻塞', halted:'已暂停', completed:'已完成', offline:'未启动'
+  };
+  return map[status] || status || '未知';
+}
+
+function resultBadge(result) {
+  if (!result) return '';
+  return `<span class="badge ${result}">${result}</span>`;
+}
+
+function statusColor(status) {
+  return {
+    idle:'#00d4aa', working:'#4da6ff', running:'#4da6ff',
+    blocked:'#f59e0b', halted:'#f59e0b', completed:'#00d4aa'
+  }[status] || '#627597';
+}
+
+function formatTime() {
+  const d = new Date();
+  return d.toLocaleString('zh-CN', { hour12:false });
+}
+
+// ========== RENDER ALL ==========
+function renderAll() {
+  renderSummaryCards();
+  renderDashAgents();
+  renderDashPipeline();
+  renderDashOutputs();
+  renderAgentsFullTable();
+  renderPipelineDetail();
+  renderTools();
+  renderReports();
+  updateTopBar();
+}
+
+// ========== SUMMARY CARDS ==========
+function renderSummaryCards() {
+  const idleCount = AGENT_ORDER.filter(n => agentData[n]?.status === 'idle' || agentData[n]?.status === 'completed').length;
+  const workingCount = AGENT_ORDER.filter(n => agentData[n]?.status === 'working' || agentData[n]?.status === 'running').length;
+  const blockedCount = AGENT_ORDER.filter(n => agentData[n]?.status === 'blocked' || agentData[n]?.status === 'halted').length;
+
+  let totalOutputs = 0;
+  AGENT_KEYS.forEach(k => {
+    const out = agentData[k]?.outputs;
+    if (Array.isArray(out)) totalOutputs += out.length;
+  });
+
+  const stepsDone = (pipelineData.steps_completed || []).length;
+  const stepsTotal = pipelineData.steps_total || (pipelineData.steps ? pipelineData.steps.length : 4);
+
+  const cards = [
+    { icon:'✅', label:'就绪',      value:idleCount,    sub:'Agent', color:'#00d4aa', pct:idleCount/5*100 },
+    { icon:'⚡', label:'执行中',    value:workingCount, sub:'Agent', color:'#4da6ff', pct:workingCount/5*100 },
+    { icon:'⚠️', label:'阻塞',      value:blockedCount, sub:'Agent', color:'#f59e0b', pct:blockedCount/5*100 },
+    { icon:'📦', label:'产出文件',  value:totalOutputs, sub:'个',    color:'#c084fc', pct:Math.min(totalOutputs/20*100,100) },
+    { icon:'🔗', label:'流水线',    value:stepsDone,    sub:`/${stepsTotal}`, color:'#fbbf24', pct:stepsDone/Math.max(stepsTotal,1)*100 },
+  ];
+
+  document.getElementById('summaryCards').innerHTML = cards.map(c => `
+    <div class="glass summary-card p-4" style="border-top:2px solid ${c.color}20">
+      <span class="card-icon">${c.icon}</span>
+      <div class="text-[10px] text-gray-500 uppercase tracking-[0.15em] mb-1 font-semibold">${c.label}</div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-2xl font-bold text-white font-mono tracking-tight">${c.value}</span>
+        <span class="text-[11px] text-gray-500 font-normal">${c.sub}</span>
+      </div>
+      <div class="mt-2 bar-track">
+        <div class="bar-fill" style="width:${c.pct}%; background:${c.color}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========== DASH AGENT LIST ==========
+function renderDashAgents() {
+  document.getElementById('dashAgentList').innerHTML = AGENT_ORDER.map(name => {
+    const d = agentData[name];
+    const meta = AGENT_META[name];
+    if (!d) return '';
+    return `
+      <div class="agent-row flex items-center justify-between py-2.5 px-3 rounded-md" style="color:${meta.color}">
+        <div class="flex items-center gap-3">
+          <span class="text-sm">${meta.icon}</span>
+          <span class="text-sm text-white font-semibold">${name}</span>
+          <span class="text-[10px] text-gray-600">${meta.label}</span>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          ${statusRing(d.status)}
+          <span style="color:${statusColor(d.status)}">${statusText(d.status)}</span>
+          ${resultBadge(d.result)}
+          ${d.current_task ? `<span class="text-gray-600 text-[10px] font-mono truncate max-w-[140px]" title="${d.current_task}">${d.current_task}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ========== DASH PIPELINE ==========
+function renderDashPipeline() {
+  const steps = pipelineData.steps || ['recon', 'pentest', 'auditor', 'reporter'];
+  const current = pipelineData.current_step;
+  const completed = (pipelineData.steps_completed || []).length;
+  const status = pipelineData.status || 'idle';
+
+  const html = `
+    <div class="mb-4 flex items-center gap-3">
+      <span class="text-[10px] text-gray-500 font-mono tracking-wider">Task</span>
+      <span class="text-sm text-white font-mono font-semibold">${pipelineData.task_id || '—'}</span>
+      <span class="text-[11px] ml-auto" style="color:${statusColor(status)}">● ${statusText(status)}</span>
+    </div>
+    <div class="flex items-center gap-0 flex-wrap mb-2">
+      ${steps.map((s, i) => {
+        let cls = 'pending';
+        let icon = i + 1;
+        if (i < completed) { cls = 'done'; icon = '✓'; }
+        else if (s === current) { cls = 'active'; icon = i + 1; }
+        return `
+          <div class="pipe-step ${cls}" data-tooltip="${s}">${icon}</div>
+          ${i < steps.length - 1 ? `<div class="pipe-connector ${i < completed ? 'done' : ''}"></div>` : ''}
+        `;
+      }).join('')}
+    </div>
+    <div class="flex gap-0 flex-wrap">
+      ${steps.map((s, i) => {
+        let cls = i < completed ? 'text-[#00d4aa]' : (s === current ? 'text-[#4da6ff]' : 'text-gray-600');
+        const label = AGENT_META[s]?.label || s.substring(0,4);
+        return `<span class="text-[9px] font-semibold ${cls}" style="width:22px; text-align:center; margin-right:${i < steps.length-1 ? '32px' : '0'}">${label.substring(0,2)}</span>`;
+      }).join('')}
+    </div>
+  `;
+  document.getElementById('dashPipeline').innerHTML = html;
+}
+
+// ========== DASH OUTPUTS ==========
+function renderDashOutputs() {
+  const lines = [];
+  AGENT_KEYS.forEach(k => {
+    const d = agentData[k];
+    if (!d) return;
+    const outs = d.outputs;
+    if (Array.isArray(outs)) {
+      outs.forEach(o => {
+        if (typeof o === 'string') lines.push({ agent:k, file:o, result:d.result });
+        else if (o && o.file) lines.push({ agent:k, file:o.file, result:o.result || d.result });
+      });
+    }
+  });
+
+  if (lines.length === 0) {
+    document.getElementById('dashOutputs').innerHTML =
+      '<div class="text-gray-600 text-xs py-3"><span class="dim">$</span> <span class="ts">no outputs yet</span></div>';
+    return;
+  }
+
+  document.getElementById('dashOutputs').innerHTML = lines.map(l => `
+    <div class="flex items-center gap-2">
+      <span class="dim">$</span>
+      <span class="cmd">[${l.agent}]</span>
+      ${resultBadge(l.result)}
+      <span class="info">→</span>
+      <span class="text-gray-300 text-[11px] truncate">${l.file}</span>
+    </div>
+  `).join('');
+}
+
+// ========== AGENTS FULL TABLE ==========
+function renderAgentsFullTable() {
+  document.getElementById('agentsFullTable').innerHTML = AGENT_ORDER.map(name => {
+    const d = agentData[name];
+    const meta = AGENT_META[name];
+    if (!d) return '';
+    const outs = Array.isArray(d.outputs) ? d.outputs : [];
+    const outputStr = outs.length > 0
+      ? outs.map(o => typeof o === 'string' ? o.replace(/^.*[\\/]/, '') : (o.file||'').replace(/^.*[\\/]/, '')).join(', ')
+      : '—';
+    return `
+      <tr class="agent-row" style="color:${meta.color}">
+        <td class="py-3 pl-1">
+          <span class="text-sm mr-2">${meta.icon}</span>
+          <span class="text-white font-semibold">${name}</span>
+          <span class="text-[10px] text-gray-600 ml-2">${meta.label}</span>
+        </td>
+        <td class="py-3">
+          ${statusRing(d.status)}
+          <span class="text-xs ml-1.5 font-medium" style="color:${statusColor(d.status)}">${statusText(d.status)}</span>
+        </td>
+        <td class="py-3 text-xs text-gray-400 font-mono">${d.current_task || '<span class="text-gray-700">—</span>'}</td>
+        <td class="py-3">${resultBadge(d.result) || '<span class="text-gray-700 text-[10px]">—</span>'}</td>
+        <td class="py-3 text-[10px] text-gray-500 font-mono max-w-[200px] truncate" title="${outs.map(o => typeof o === 'string' ? o : o.file).join(', ')}">${outputStr}</td>
+      </tr>
+    `;
+  }).join('');
+
+  document.getElementById('agentRefreshHint').textContent = `更新于 ${formatTime()}`;
+}
+
+// ========== PIPELINE DETAIL ==========
+function renderPipelineDetail() {
+  const steps = pipelineData.steps || ['recon', 'pentest', 'auditor', 'reporter'];
+  const current = pipelineData.current_step;
+  const completed = (pipelineData.steps_completed || []).length;
+
+  const agentStatuses = AGENT_ORDER.map(name => {
+    const d = agentData[name];
+    if (!d) return null;
+    const isCurrent = steps.includes(name) && name === current;
+    const isDone = steps.includes(name) && steps.indexOf(name) < completed;
+    const meta = AGENT_META[name];
+    return { name, ...meta, status:d.status, result:d.result, current_task:d.current_task, isCurrent, isDone };
+  }).filter(Boolean);
+
+  document.getElementById('pipelineDetail').innerHTML = `
+    <div class="mb-5 flex items-center gap-4 p-3 rounded-lg" style="background:rgba(255,255,255,0.02)">
+      <span class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Task ID</span>
+      <span class="text-sm text-white font-mono font-semibold">${pipelineData.task_id || '—'}</span>
+      <span class="badge ml-auto" style="color:${statusColor(pipelineData.status)}; background:${statusColor(pipelineData.status)}15; border-color:${statusColor(pipelineData.status)}30">
+        ${statusText(pipelineData.status)}
+      </span>
+    </div>
+    <div class="space-y-2">
+      ${agentStatuses.map((a, idx) => {
+        const borderColor = a.isCurrent ? `${a.color}50` : a.isDone ? `${a.color}25` : 'transparent';
+        const bgColor = a.isCurrent ? `${a.color}08` : a.isDone ? `${a.color}05` : 'transparent';
+        return `
+          <div class="agent-row flex items-center gap-4 py-3 px-4 rounded-lg border transition-all duration-300"
+               style="border-color:${borderColor}; background:${bgColor}; color:${a.color}">
+            <div class="flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold font-mono"
+                 style="background:${a.isDone ? a.color+'20' : a.isCurrent ? a.color+'15' : 'rgba(255,255,255,0.03)'}; color:${a.isDone ? a.color : a.isCurrent ? a.color : '#4b5563'}">
+              ${a.isDone ? '✓' : idx + 1}
+            </div>
+            <span class="text-sm text-white font-semibold w-20">${a.name}</span>
+            <span class="text-[10px] text-gray-600 w-16">${a.label}</span>
+            ${statusRing(a.status)}
+            <span class="text-xs font-medium" style="color:${statusColor(a.status)}">${statusText(a.status)}</span>
+            ${resultBadge(a.result)}
+            <span class="text-[10px] text-gray-500 font-mono flex-1 truncate">${a.current_task || ''}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ========== TOOLS ==========
+const FALLBACK_TOOLS = {
+  recon:   { nmap: true, subfinder: true, whatweb: true },
+  pentest: { sqlmap: true, nuclei: true, hydra: true },
+};
+
+function renderTools() {
+  let source = toolsData;
+  if (!source || Object.keys(source).length === 0) {
+    source = FALLBACK_TOOLS;
+  }
+
+  const rows = [];
+  for (const [category, toolMap] of Object.entries(source)) {
+    if (typeof toolMap !== 'object') continue;
+    for (const [tool, available] of Object.entries(toolMap)) {
+      rows.push({ category, tool, available: !!available });
+    }
+  }
+
+  if (rows.length === 0) {
+    document.getElementById('toolsGrid').innerHTML =
+      '<div class="text-gray-500 text-xs col-span-2 py-6 text-center"><span class="dim">暂无工具数据</span></div>';
+    return;
+  }
+
+  document.getElementById('toolsGrid').innerHTML = rows.map(r => {
+    const catColor = AGENT_META[r.category]?.color || '#627597';
+    return `
+      <div class="flex items-center justify-between p-3.5 rounded-lg border transition-all duration-200 hover:scale-[1.01]"
+           style="border-color:rgba(255,255,255,0.04); background:rgba(255,255,255,0.01)">
+        <div class="flex items-center gap-3">
+          <span class="status-ring ${r.available ? 'idle' : 'offline'}"></span>
+          <span class="text-sm text-white font-mono font-medium">${r.tool}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded" style="color:${catColor}; background:${catColor}10">${r.category}</span>
+          <span class="text-[10px] font-medium ${r.available ? '' : 'text-gray-600'}" style="color:${r.available ? catColor : '#4b5563'}">
+            ${r.available ? '可用' : '不可用'}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ========== REPORTS ==========
+function renderReports() {
+  const reportFiles = [];
+  AGENT_KEYS.forEach(k => {
+    const d = agentData[k];
+    if (!d) return;
+    const outs = d.outputs;
+    if (Array.isArray(outs)) {
+      outs.forEach(o => {
+        const filename = typeof o === 'string' ? o : o.file;
+        if (filename) {
+          const basename = filename.replace(/^.*[\\/]/, '');
+          reportFiles.push({
+            agent: k,
+            filename: filename,
+            basename: basename,
+            result: typeof o === 'object' ? o.result : d.result,
+          });
+        }
+      });
+    }
+  });
+
+  if (reportFiles.length === 0) {
+    document.getElementById('reportsList').innerHTML =
+      '<div class="text-gray-500 text-xs py-6 text-center"><span class="dim">暂无报告产出</span></div>';
+    return;
+  }
+
+  document.getElementById('reportsList').innerHTML = reportFiles.map(r => {
+    const catColor = AGENT_META[r.agent]?.color || '#627597';
+    const isHumanVersion = r.basename.includes('人话版');
+    return `
+      <div class="flex items-center justify-between py-3 px-4 rounded-lg border mb-2 transition-all duration-200 hover:scale-[1.005]"
+           style="border-color:${catColor}15; background:rgba(255,255,255,0.01)">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded" style="color:${catColor}; background:${catColor}10">${r.agent}</span>
+          <span class="text-sm text-white font-mono truncate">${r.basename}</span>
+          ${isHumanVersion ? '<span class="text-[9px] text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">人话版</span>' : ''}
+          ${resultBadge(r.result)}
+        </div>
+        <span class="text-[10px] text-gray-600 font-mono ml-4 flex-shrink-0 truncate max-w-[260px]" title="${r.filename}">${r.filename}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ========== TOP BAR ==========
+function updateTopBar() {
+  const total = AGENT_ORDER.filter(n => agentData[n]).length;
+  const working = AGENT_ORDER.filter(n => agentData[n]?.status === 'working' || agentData[n]?.status === 'running').length;
+  document.getElementById('topAgentCount').innerHTML =
+    `<span class="text-gray-500">${total}</span> Agent · <span style="color:#4da6ff">${working}</span> 执行中`;
+  document.getElementById('topTaskId').textContent = pipelineData.task_id ? `# ${pipelineData.task_id}` : '';
+}
+
+// ========== NAVIGATION ==========
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', e => {
     e.preventDefault();
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active', 'text-white', 'bg-white/5'));
-    item.classList.add('active', 'text-white', 'bg-white/5');
-    const tab = item.dataset.tab;
+    document.querySelectorAll('.nav-link').forEach(l => {
+      l.classList.remove('active');
+      l.classList.add('text-gray-400');
+    });
+    link.classList.add('active');
+    link.classList.remove('text-gray-400');
+    document.getElementById('pageTitle').textContent = link.textContent.trim().replace(/^[^\s]+\s/, '');
     document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-    const target = document.getElementById('tab-' + tab);
-    if (target) target.classList.remove('hidden');
-    document.getElementById('pageTitle').textContent = item.textContent.trim().replace(/\s*\d+$/, '');
-    if (tab === 'dashboard') initCharts();
+    const tabId = 'tab-' + link.dataset.tab;
+    const tabEl = document.getElementById(tabId);
+    if (tabEl) tabEl.classList.remove('hidden');
   });
 });
 
-// ========== Agent List ==========
-const agents = [
-  { name: 'LynxSec-Main', type: '编排引擎', status: 'online', tasks: 47, success: 98.2, lastActive: '刚刚' },
-  { name: 'Scanner-Pro', type: '漏洞扫描', status: 'online', tasks: 312, success: 99.1, lastActive: '2 分钟前' },
-  { name: 'Intel-Feed', type: '威胁情报', status: 'online', tasks: 89, success: 97.8, lastActive: '刚刚' },
-  { name: 'Audit-Bot', type: '代码审计', status: 'online', tasks: 156, success: 96.5, lastActive: '5 分钟前' },
-  { name: 'Defender-X', type: '主动防御', status: 'warning', tasks: 23, success: 94.2, lastActive: '1 分钟前' },
-];
-
-function renderAgents() {
-  const list = document.getElementById('agentList');
-  list.innerHTML = agents.map(a => `
-    <div class="agent-card flex items-center justify-between py-2.5 px-3 rounded-md hover:bg-white/3 transition-colors cursor-pointer">
-      <div class="flex items-center gap-3">
-        <div class="pulse-dot ${a.status === 'online' ? 'bg-cyber-green' : a.status === 'warning' ? 'bg-cyber-orange warn' : 'bg-cyber-red danger'}"></div>
-        <div>
-          <p class="text-sm text-white font-medium">${a.name}</p>
-          <p class="text-[10px] text-gray-500">${a.type}</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-4 text-xs">
-        <span class="text-gray-400">${a.tasks} 任务</span>
-        <span class="text-cyber-green font-mono">${a.success}%</span>
-        <span class="text-gray-600 text-[10px]">${a.lastActive}</span>
-      </div>
-    </div>
-  `).join('');
-
-  // Agents table
-  const tbody = document.getElementById('agentsTableBody');
-  tbody.innerHTML = agents.map(a => `
-    <tr class="hover:bg-white/3 transition-colors">
-      <td class="py-3">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full ${a.status === 'online' ? 'bg-cyber-green' : 'bg-cyber-orange'}"></span>
-          <span class="text-white font-medium">${a.name}</span>
-        </div>
-      </td>
-      <td class="py-3 text-gray-400">${a.type}</td>
-      <td class="py-3"><span class="text-[10px] px-2 py-0.5 rounded-full ${a.status === 'online' ? 'bg-cyber-green/20 text-cyber-green' : 'bg-orange-500/20 text-orange-400'} font-mono">${a.status === 'online' ? '在线' : '异常'}</span></td>
-      <td class="py-3 font-mono text-gray-300">${a.tasks}</td>
-      <td class="py-3 font-mono"><span class="${a.success >= 98 ? 'text-cyber-green' : 'text-orange-400'}">${a.success}%</span></td>
-      <td class="py-3 text-gray-500 text-xs">${a.lastActive}</td>
-      <td class="py-3">
-        <div class="flex gap-1">
-          <button class="text-[10px] text-gray-400 hover:text-white px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 transition-colors">日志</button>
-          <button class="text-[10px] text-gray-400 hover:text-white px-1.5 py-0.5 rounded border border-white/10 hover:border-white/20 transition-colors">重启</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+// ========== TOAST ==========
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = (type === 'warn' ? '⚠ ' : '✓ ') + msg;
+  el.style.display = 'block';
+  el.style.background = type === 'warn'
+    ? 'rgba(245,158,11,0.15)'
+    : 'rgba(0,212,170,0.12)';
+  el.style.color = type === 'warn' ? '#f59e0b' : '#00d4aa';
+  el.style.borderColor = type === 'warn'
+    ? 'rgba(245,158,11,0.25)'
+    : 'rgba(0,212,170,0.2)';
+  setTimeout(() => { el.style.display = 'none'; }, 2500);
 }
 
-// ========== Recent Tasks ==========
-const tasks = [
-  { id: 'T-2847', name: '全端口扫描 192.168.1.0/24', agent: 'Scanner-Pro', status: 'running', time: '21:48' },
-  { id: 'T-2846', name: 'CVE-2026 漏洞验证', agent: 'Scanner-Pro', status: 'done', time: '21:35' },
-  { id: 'T-2845', name: '代码审计 — auth模块', agent: 'Audit-Bot', status: 'done', time: '21:20' },
-  { id: 'T-2844', name: '威胁情报同步', agent: 'Intel-Feed', status: 'done', time: '21:00' },
-  { id: 'T-2843', name: 'WAF 规则更新', agent: 'Defender-X', status: 'failed', time: '20:45' },
-];
-
-function renderTasks() {
-  const list = document.getElementById('recentTasks');
-  list.innerHTML = tasks.map(t => `
-    <div class="flex items-center justify-between py-2 px-3 rounded-md hover:bg-white/3 transition-colors">
-      <div class="flex items-center gap-3">
-        <span class="text-[10px] font-mono ${t.status === 'running' ? 'text-cyber-blue' : t.status === 'done' ? 'text-cyber-green' : 'text-cyber-red'}">
-          ${t.status === 'running' ? '⟳' : t.status === 'done' ? '✓' : '✗'}
-        </span>
-        <div>
-          <p class="text-sm text-white">${t.name}</p>
-          <p class="text-[10px] text-gray-600">${t.agent} · ${t.id}</p>
-        </div>
-      </div>
-      <span class="text-[10px] text-gray-500 font-mono">${t.time}</span>
-    </div>
-  `).join('');
+// ========== CLOCK ==========
+function updateClock() {
+  document.getElementById('sidebarClock').textContent = formatTime();
 }
+setInterval(updateClock, 30000);
+updateClock();
 
-// ========== Terminal ==========
-const terminalLogs = [
-  { time: '21:48:32', level: 'info', msg: '[Scanner-Pro] 启动全端口扫描 192.168.1.0/24 ...' },
-  { time: '21:48:33', level: 'info', msg: '[Scanner-Pro] 已发现 12 台活跃主机' },
-  { time: '21:48:35', level: 'warn', msg: '[Scanner-Pro] 192.168.1.45: 端口 3389 开放 (RDP) — 建议加固' },
-  { time: '21:48:38', level: 'info', msg: '[Scanner-Pro] 192.168.1.23: 端口 22 开放 (SSH) — 版本 OpenSSH 8.9' },
-  { time: '21:48:41', level: 'error', msg: '[Scanner-Pro] 192.168.1.78: CVE-2024-6387 (regreSSHion) 疑似存在' },
-  { time: '21:48:44', level: 'info', msg: '[Scanner-Pro] 192.168.1.100: 端口 443 开放 (HTTPS) — TLS 1.2' },
-  { time: '21:48:47', level: 'info', msg: '[Intel-Feed] 威胁情报更新: 新 IOC 入库 +34' },
-  { time: '21:48:50', level: 'warn', msg: '[Defender-X] 检测到异常流量: 192.168.1.78 → 外部 C2 通信' },
-  { time: '21:48:52', level: 'info', msg: '[Audit-Bot] 代码审计完成: auth.py — 发现 1 中危' },
-  { time: '21:48:55', level: 'info', msg: '[LynxSec-Main] 编排流程: 漏洞扫描 → 威胁情报 → 告警通知 已完成' },
-];
-
-function renderTerminal() {
-  const term = document.getElementById('terminalOutput');
-  term.innerHTML = terminalLogs.map(l => `
-    <div class="terminal-line log-line" style="animation-delay: ${Math.random() * 0.5}s">
-      <span class="text-gray-600">[${l.time}]</span>
-      <span class="${l.level === 'error' ? 'text-red-400' : l.level === 'warn' ? 'text-yellow-400' : 'text-gray-400'} ml-2">${l.level.toUpperCase()}</span>
-      <span class="text-gray-300 ml-2">${l.msg}</span>
-    </div>
-  `).join('');
-}
-
-// ========== Tools ==========
-const tools = [
-  { name: 'Nmap', desc: '网络发现与端口扫描', status: 'ready', icon: 'search' },
-  { name: 'WhatWeb', desc: 'Web 技术指纹识别', status: 'ready', icon: 'globe' },
-  { name: 'Subfinder', desc: '子域名枚举', status: 'ready', icon: 'network' },
-  { name: 'Nuclei', desc: '漏洞模板扫描', status: 'running', icon: 'crosshair' },
-  { name: 'SQLMap', desc: 'SQL 注入检测', status: 'ready', icon: 'database' },
-  { name: 'Hydra', desc: '口令爆破测试', status: 'ready', icon: 'key' },
-  { name: 'Metasploit', desc: '渗透测试框架', status: 'offline', icon: 'skull' },
-  { name: 'Burp Collab', desc: '带外漏洞检测', status: 'ready', icon: 'radio' },
-  { name: 'FFUF', desc: '目录/虚拟主机枚举', status: 'ready', icon: 'folder-search' },
-];
-
-function renderTools() {
-  const grid = document.getElementById('toolsGrid');
-  grid.innerHTML = tools.map(t => `
-    <div class="glass rounded-lg p-4 hover:bg-white/5 transition-colors cursor-pointer">
-      <div class="flex items-center justify-between mb-3">
-        <div class="w-9 h-9 rounded-md bg-white/5 flex items-center justify-center">
-          <i data-lucide="${t.icon}" class="w-4 h-4 ${t.status === 'offline' ? 'text-gray-600' : 'text-cyber-green'}"></i>
-        </div>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full ${t.status === 'ready' ? 'bg-cyber-green/20 text-cyber-green' : t.status === 'running' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'}">${t.status === 'ready' ? '就绪' : t.status === 'running' ? '执行中' : '离线'}</span>
-      </div>
-      <h4 class="text-sm text-white font-medium">${t.name}</h4>
-      <p class="text-[11px] text-gray-500 mt-1">${t.desc}</p>
-    </div>
-  `).join('');
-  lucide.createIcons();
-}
-
-// ========== Alerts ==========
-const alerts = [
-  { severity: 'high', title: 'CVE-2024-6387 regreSSHion 漏洞', host: '192.168.1.78', time: '21:48', desc: 'OpenSSH 远程代码执行漏洞，CVSS 8.1，建议立即升级到 9.8p1+' },
-  { severity: 'high', title: '疑似 C2 外联通信', host: '192.168.1.78', time: '21:48', desc: '检测到该主机向已知恶意 IP 发起加密通信，疑似已被植入后门' },
-  { severity: 'high', title: 'RDP 端口暴露', host: '192.168.1.45', time: '21:48', desc: '3389 端口对外开放，且未启用 NLA，存在暴力破解风险' },
-  { severity: 'medium', title: 'TLS 1.0 仍在使用', host: '192.168.1.100', time: '21:35', desc: 'Web 服务器仍支持已废弃的 TLS 1.0 协议，建议禁用' },
-  { severity: 'medium', title: 'SQL 注入风险', host: '192.168.1.23', time: '21:20', desc: 'auth.py 第 147 行存在拼接 SQL 查询，建议使用参数化查询' },
-];
-
-function renderAlerts() {
-  const list = document.getElementById('alertsList');
-  list.innerHTML = alerts.map(a => `
-    <div class="flex gap-4 p-4 rounded-lg ${a.severity === 'high' ? 'bg-red-500/5 border border-red-500/10' : 'bg-orange-500/5 border border-orange-500/10'}">
-      <div class="flex-shrink-0 mt-0.5">
-        <div class="w-8 h-8 rounded-full flex items-center justify-center ${a.severity === 'high' ? 'bg-red-500/20' : 'bg-orange-500/20'}">
-          <i data-lucide="${a.severity === 'high' ? 'alert-octagon' : 'alert-triangle'}" class="w-4 h-4 ${a.severity === 'high' ? 'text-red-400' : 'text-orange-400'}"></i>
-        </div>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
-          <h4 class="text-sm text-white font-semibold">${a.title}</h4>
-          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded ${a.severity === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}">${a.severity === 'high' ? '高危' : '中危'}</span>
-        </div>
-        <p class="text-xs text-gray-400 mb-2">${a.desc}</p>
-        <div class="flex items-center gap-3 text-[10px] text-gray-600">
-          <span class="font-mono">🖥 ${a.host}</span>
-          <span>⏱ ${a.time}</span>
-          <button class="text-cyber-green hover:underline ml-auto">处理 →</button>
-          <button class="text-gray-500 hover:text-white">忽略</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-  lucide.createIcons();
-}
-
-// ========== Reports ==========
-const reports = [
-  { name: '2026-06-08 日报', type: '日报', time: '21:50', size: '1.2 MB' },
-  { name: '2026-06-07 日报', type: '日报', time: '昨日', size: '1.1 MB' },
-  { name: '2026-W23 周报', type: '周报', time: '06-07', size: '3.4 MB' },
-  { name: 'CVE-2026 专项分析', type: '专项', time: '06-06', size: '5.2 MB' },
-];
-
-function renderReports() {
-  const grid = document.getElementById('reportsGrid');
-  grid.innerHTML = reports.map(r => `
-    <div class="flex items-center justify-between p-4 rounded-lg border border-white/5 hover:border-white/10 transition-colors cursor-pointer">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-md bg-cyber-green/10 flex items-center justify-center">
-          <i data-lucide="file-text" class="w-4 h-4 text-cyber-green"></i>
-        </div>
-        <div>
-          <p class="text-sm text-white font-medium">${r.name}</p>
-          <p class="text-[10px] text-gray-600">${r.type} · ${r.size} · ${r.time}</p>
-        </div>
-      </div>
-      <button class="text-[10px] text-cyber-green hover:underline font-mono">下载</button>
-    </div>
-  `).join('');
-  lucide.createIcons();
-}
-
-// ========== Charts (Recharts) ==========
-function initCharts() {
-  const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } = Recharts;
-
-  // Activity data
-  const activityData = [];
-  for (let i = 23; i >= 0; i--) {
-    activityData.push({
-      hour: `${i}:00`,
-      scans: Math.floor(Math.random() * 80 + 20),
-      threats: Math.floor(Math.random() * 15),
-    });
-  }
-
-  const activityRoot = ReactDOM.createRoot(document.getElementById('activityChart'));
-  activityRoot.render(
-    React.createElement(ResponsiveContainer, { width: '100%', height: '100%' },
-      React.createElement(AreaChart, { data: activityData },
-        React.createElement(CartesianGrid, { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.05)' }),
-        React.createElement(XAxis, { dataKey: 'hour', stroke: '#4e5e7d', fontSize: 10, tickLine: false }),
-        React.createElement(YAxis, { stroke: '#4e5e7d', fontSize: 10, tickLine: false }),
-        React.createElement(Tooltip, {
-          contentStyle: { background: '#141b24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', fontSize: '12px' },
-          labelStyle: { color: '#d4d9e3' }
-        }),
-        React.createElement(Area, { type: 'monotone', dataKey: 'scans', stroke: '#25a55f', fill: 'rgba(37,165,95,0.1)', strokeWidth: 2 }),
-        React.createElement(Area, { type: 'monotone', dataKey: 'threats', stroke: '#e74c3c', fill: 'rgba(231,76,60,0.1)', strokeWidth: 2 })
-      )
-    )
-  );
-
-  // Threat distribution
-  const threatData = [
-    { name: '漏洞利用', value: 12, color: '#e74c3c' },
-    { name: '暴力破解', value: 7, color: '#f39c12' },
-    { name: '配置缺陷', value: 5, color: '#3498db' },
-    { name: '信息泄露', value: 3, color: '#9b59b6' },
-    { name: '恶意软件', value: 1, color: '#1abc9c' },
-  ];
-
-  const threatRoot = ReactDOM.createRoot(document.getElementById('threatChart'));
-  threatRoot.render(
-    React.createElement(ResponsiveContainer, { width: '100%', height: '100%' },
-      React.createElement(PieChart,
-        null,
-        React.createElement(Pie, {
-          data: threatData, cx: '50%', cy: '50%', innerRadius: 50, outerRadius: 80,
-          paddingAngle: 3, dataKey: 'value', stroke: 'none'
-        }, threatData.map((entry, i) => React.createElement(Cell, { key: i, fill: entry.color }))),
-        React.createElement(Tooltip, {
-          contentStyle: { background: '#141b24', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', fontSize: '12px' }
-        }),
-        React.createElement(Legend, {
-          wrapperStyle: { fontSize: '11px', color: '#8293b0' }
-        })
-      )
-    )
-  );
-}
-
-// ========== Init ==========
-document.addEventListener('DOMContentLoaded', () => {
-  renderAgents();
-  renderTasks();
-  renderTerminal();
-  renderTools();
-  renderAlerts();
-  renderReports();
-  lucide.createIcons();
-
-  // Load React/Recharts from CDN for charts
-  const reactScript = document.createElement('script');
-  reactScript.src = 'https://unpkg.com/react@18/umd/react.production.min.js';
-  reactScript.onload = () => {
-    const reactDomScript = document.createElement('script');
-    reactDomScript.src = 'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js';
-    reactDomScript.onload = () => {
-      initCharts();
-    };
-    document.body.appendChild(reactDomScript);
-  };
-  document.body.appendChild(reactScript);
-});
+// ========== BOOT ==========
+loadAll();
+setInterval(loadAll, 15000);
 </script>
 
 </body>
