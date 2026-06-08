@@ -1,4 +1,4 @@
-"""cli.py -- LynxSec CLI. Claude Code style + Rich terminal."""
+﻿"""cli.py -- LynxSec CLI. Claude Code style + Rich terminal."""
 
 from __future__ import annotations
 import json, os, subprocess, sys, time
@@ -16,7 +16,7 @@ STATE = os.path.join(ROOT, "state")
 DVWA = "http://localhost:80"
 AGENTS = ["recon", "pentest", "auditor", "reporter"]
 COLORS = {"recon":"green","pentest":"red","auditor":"blue","reporter":"yellow","dispatcher":"cyan"}
-TAGS = {"recon":"[侦察]","pentest":"[渗透]","auditor":"[审计]","reporter":"[报告]","dispatcher":"[调度]"}
+TAGS = {"recon":"[渚﹀療]","pentest":"[娓楅€廬","auditor":"[瀹¤]","reporter":"[鎶ュ憡]","dispatcher":"[璋冨害]"}
 
 def tag(a):
     c = COLORS.get(a,"white"); t = TAGS.get(a,a)
@@ -29,11 +29,37 @@ def check_config():
         return "LLM_API_KEY=" in f.read() and "your_" not in f.read()
 
 def check_dvwa():
+    """Check if DVWA is reachable, bypassing system proxy for localhost."""
     try:
-        r = Request(DVWA, method="GET")
-        with urlopen(r, timeout=5) as r2:
+        import urllib.request
+        handler = urllib.request.ProxyHandler({})
+        opener = urllib.request.build_opener(handler)
+        with opener.open(DVWA, timeout=5) as r2:
             return r2.status in (200, 302, 403)
-    except: return False
+    except Exception:
+        return False
+
+def _auto_start_dvwa():
+    """Try to start Docker + DVWA container inside WSL."""
+    import subprocess as _sp
+    try:
+        _sp.run(["wsl", "-u", "root", "service", "docker", "start"],
+                capture_output=True, timeout=10)
+        _sp.run(["wsl", "-u", "root", "docker", "start", "dvwa"],
+                capture_output=True, timeout=15)
+        return check_dvwa()
+    except Exception:
+        return False
+
+def ensure_dvwa():
+    """Check DVWA, auto-recover if possible."""
+    if check_dvwa():
+        return True
+    console.print("[yellow]DVWA offline. Trying auto-recovery...[/yellow]")
+    if _auto_start_dvwa():
+        console.print("[green]DVWA recovered![/green]")
+        return True
+    return False
 
 def clean_state():
     if os.path.isdir(STATE):
@@ -173,7 +199,7 @@ def main():
         console.print("[red]config.env missing or incomplete.[/red]")
         sys.exit(1)
 
-    if not check_dvwa():
+    if not ensure_dvwa():
         console.print("[yellow]DVWA offline. continue? [y/N] [/yellow]", end="")
         try:
             if input().strip().lower() != "y": sys.exit(0)
@@ -197,3 +223,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+

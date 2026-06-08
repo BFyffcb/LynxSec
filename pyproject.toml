@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-lynxsec = "cli:main"
+lyx = "lynxcli:main"
 
 
 [build-system]
@@ -22,3 +22,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["core*", "infra*"]
 exclude = ["wiki*", "state*", "outputs*"]
+
+[tool.setuptools]
+py-modules = ["lynxcli"]
