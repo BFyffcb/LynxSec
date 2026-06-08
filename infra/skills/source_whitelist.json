@@ -33,7 +33,8 @@
       "name": "CISA ? Cybersecurity and Infrastructure Security Agency",
       "domain": "cisa.gov",
       "fetch_urls": [
-        "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+        "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+        "https://www.cisa.gov/sbom"
       ],
       "category": "framework",
       "update_strategy": "daily_feed"
@@ -55,7 +56,8 @@
       "fetch_urls": [
         "https://owasp.org/www-project-top-ten/",
         "https://owasp.org/www-project-api-security/",
-        "https://owasp.org/www-project-application-security-verification-standard/"
+        "https://owasp.org/www-project-application-security-verification-standard/",
+        "https://owasp.org/www-project-top-10-for-large-language-model-applications/"
       ],
       "category": "community",
       "update_strategy": "version_check"
@@ -85,7 +87,9 @@
       "name": "MITRE ATT&CK ? Adversarial Tactics, Techniques, and Common Knowledge",
       "domain": "mitre.org",
       "fetch_urls": [
-        "https://attack.mitre.org/"
+        "https://attack.mitre.org/",
+        "https://slsa.dev/",
+        "https://atlas.mitre.org/matrices/ATLAS"
       ],
       "category": "community",
       "update_strategy": "version_check"
