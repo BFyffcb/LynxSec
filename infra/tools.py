@@ -69,7 +69,7 @@ def _build_cmd(tool_name: str, args: list[str]) -> list[str]:
     返回:
         完整的命令列表，如 ["wsl", "nmap", "-sV", "192.168.1.1"]
     """
-    is_wsl_inside = os.path.isfile("/proc/version")
+    is_wsl_inside = os.path.isfile("/proc/version") and "WSL" in os.getenv("WSL_DISTRO_NAME", "")
 
     if is_wsl_inside:
         return [tool_name] + args

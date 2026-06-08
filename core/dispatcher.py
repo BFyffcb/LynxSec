@@ -661,6 +661,9 @@ def run(user_input: str) -> str | None:
                     print(f"[调度Agent] {agent} 重试仍未成功，跳过。")
                     _update_pipeline(task_id, step_completed=agent)
                     completed_steps.append(agent)
+                    agent_output = _read_agent_output(agent, task_id)
+                    if agent_output:
+                        _update_pipeline(task_id, outputs_update={agent: agent_output})
                     continue
             else:
                 print(f"[调度Agent] 跳过 {agent}（失败后跳过）。")
