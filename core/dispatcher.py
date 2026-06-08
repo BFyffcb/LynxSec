@@ -423,23 +423,25 @@ def _read_agent_output(agent: str) -> dict:
 
 _SYSTEM_PROMPT_DECIDE = """你是 LynxSec 的安全调度决策器。
 
-你会收到上一步 Agent 的扫描结果，然后决定下一步如何行动。
+调度流水线是固定的：recon -> pentest -> auditor -> reporter，不可跳过。
+你的任务是根据上一步产出生成下一步的 target 和 params。
 
-规则：
-1. 如果 recon 返回了 Web 端口（80/443/8080等），必须把端口信息传给 pentest
-2. 如果 recon 没有发现 Web 端口，pentest 跳过（但仍需告诉 dispatcher "跳过"）
-3. pentest 的结果必须完整传给 auditor（包含漏洞详情、URL、参数）
-4. auditor 的结果必须完整传给 reporter
-5. 输出一个 JSON 对象：
+规则（严格按此顺序）：
+1. 流水线顺序不可变，永远按 completed 列表的下一个 Agent 推进
+2. recon 完成后 → pentest。params 必须包含 {"ports": "从recon结果中提取的Web端口", "url": "http://target:port"}
+3. pentest 完成后 → auditor。params 包含漏洞详情
+4. auditor 完成后 → reporter。params 包含审计结果
+5. 任何情况下都不要跳过 pentest。nmap 扫到 80 端口就是 Web 服务。
 
+输出 JSON：
 {
-  "next_action": "port_scan" 或其他动作名,
-  "target": "目标地址",
-  "params": {"ports": "80,443", "url": "http://..."}  (每步需要的参数),
-  "reason": "一句话说明为什么要这步"
+  "action": "pentest" 或 "auditor" 或 "reporter",
+  "target": "从数据中提取的目标",
+  "params": {每步需要的具体参数},
+  "reason": "简短说明"
 }
 
-只返回 JSON，不要任何其他文字。"""
+只返回 JSON。"""
 
 
 def _llm_decide_next(llm: LLM, agent_name: str, agent_output: dict, intent: dict, completed: list[str]) -> dict:
@@ -626,7 +628,7 @@ def run(user_input: str) -> str | None:
             prev_output = _read_agent_output(prev_agent)
             print(f"[调度Agent] 分析 {prev_agent} 的结果，决定 {agent} 的行动...")
             decision = _llm_decide_next(llm, prev_agent, prev_output, intent, completed_steps)
-            action = decision.get("next_action", "continue")
+            action = decision.get("action", "continue")
             step_target = decision.get("target", target)
             step_params = decision.get("params", {})
             print(f"  决策: {decision.get('reason', '继续流水线')}")
