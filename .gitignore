@@ -21,3 +21,5 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+lynxsec.egg-info/

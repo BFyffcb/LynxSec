@@ -16,7 +16,7 @@ STATE = os.path.join(ROOT, "state")
 DVWA = "http://localhost:80"
 AGENTS = ["recon", "pentest", "auditor", "reporter"]
 COLORS = {"recon":"green","pentest":"red","auditor":"blue","reporter":"yellow","dispatcher":"cyan"}
-TAGS = {"recon":"[渚﹀療]","pentest":"[娓楅€廬","auditor":"[瀹¤]","reporter":"[鎶ュ憡]","dispatcher":"[璋冨害]"}
+TAGS = {"recon":"[情报]","pentest":"[渗透]","auditor":"[审计]","reporter":"[报告]","dispatcher":"[调度]"}
 
 def tag(a):
     c = COLORS.get(a,"white"); t = TAGS.get(a,a)

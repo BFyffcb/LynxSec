@@ -151,6 +151,12 @@ def _write_done_status(task_id: str, outputs: list, result: str, code: int = 0) 
 
 _SYSTEM_PROMPT_PLAN = """你是 LynxSec 的情报收集规划器。
 
+重要约束：
+- nmap 扫描端口使用 -p 1-10000，不要使用 -p-（全65535端口），除非任务明确要求
+- 优先使用 --top-ports 1000 快速扫描，或 -p 80,443,8080,8443 常见Web端口
+- 先快速扫描再决定是否深入，节约时间
+- 默认超时 120s，规划工具时考虑超时限制
+
 你会收到 dispatcher 下发的侦察指令（包含目标和参数）。
 你需要规划要运行哪些工具，以及每个工具的参数。
 
@@ -184,7 +190,7 @@ def _plan_tools(llm: LLM, command: dict) -> list[dict]:
     context = json.dumps(command, ensure_ascii=False, indent=2)
 
     print("[情报Agent] 正在分析任务，规划侦察策略...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_PLAN, context)
+    raw_reply = llm.chat(_SYSTEM_PROMPT_PLAN, context, thinking_label="规划侦察策略")
 
     cleaned = raw_reply.strip()
     if cleaned.startswith("```"):
@@ -266,7 +272,7 @@ def _summarize_results(llm: LLM, tool_results: list[dict], target: str) -> dict:
 
     context = "\n".join(context_parts)
     print("[情报Agent] 正在分析扫描结果...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_SUMMARIZE, context)
+    raw_reply = llm.chat(_SYSTEM_PROMPT_SUMMARIZE, context, thinking_label="分析侦察结果")
 
     cleaned = raw_reply.strip()
     if cleaned.startswith("```"):

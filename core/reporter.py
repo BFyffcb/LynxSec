@@ -228,7 +228,7 @@ def _generate_human_report(llm: LLM, all_data: dict, target: str) -> str:
     context = "\n".join(context_parts)
 
     print("[报告Agent] 正在生成人话版报告...")
-    report = llm.chat(_SYSTEM_PROMPT_HUMAN, context)
+    report = llm.chat(_SYSTEM_PROMPT_HUMAN, context, thinking_label="生成人话版报告")
     return report
 
 
@@ -310,7 +310,7 @@ def _generate_tech_report(llm: LLM, all_data: dict, target: str) -> str:
     context = "\n".join(context_parts)
 
     print("[报告Agent] 正在生成技术版报告...")
-    report = llm.chat(_SYSTEM_PROMPT_TECH, context)
+    report = llm.chat(_SYSTEM_PROMPT_TECH, context, thinking_label="生成技术版报告")
     return report
 
 

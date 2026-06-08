@@ -55,12 +55,14 @@ class LLM:
                 "  LLM_MODEL=xxx"
             )
 
-    def chat(self, system_prompt: str, user_message: str) -> str:
+    def chat(self, system_prompt: str, user_message: str,
+             thinking_label: str = "") -> str:
         """发送一次对话请求，返回模型的文本回复。
 
         参数:
-            system_prompt: 系统提示词（定义角色、输出格式等）
-            user_message:  用户消息（具体的任务内容）
+            system_prompt:  系统提示词（定义角色、输出格式等）
+            user_message:   用户消息（具体的任务内容）
+            thinking_label: 思考标签，非空时输出 "⏳ {label}..." 和耗时
 
         返回:
             str: 模型的回复文本
@@ -68,6 +70,11 @@ class LLM:
         异常:
             RuntimeError: API 调用失败时抛出（带详细错误信息）
         """
+        if thinking_label:
+            import time as _time
+            _start = _time.time()
+            print(f"  ⏳ {thinking_label}...", end="", flush=True)
+
         url = f"{self.base_url}/chat/completions"
 
         body: dict = {
@@ -115,5 +122,9 @@ class LLM:
         if not content:
             snippet = json.dumps(result, ensure_ascii=False)[:500]
             raise RuntimeError(f"[LLM] API 返回了空的 content\n响应: {snippet}")
+
+        if thinking_label:
+            _elapsed = _time.time() - _start
+            print(f" (dim {_elapsed:.1f}s)")
 
         return content

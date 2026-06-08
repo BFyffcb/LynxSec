@@ -226,7 +226,7 @@ def _parse_intent(llm: LLM, user_input: str) -> dict:
         包含 target, scan_scope, steps, recon_instruction, skip_pentest 的字典。
     """
     print("[调度Agent] 正在分析你的需求...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_INTENT, user_input)
+    raw_reply = llm.chat(_SYSTEM_PROMPT_INTENT, user_input, thinking_label="解析用户意图")
 
     # LLM 可能返回带 markdown 代码块包装的 JSON，先清理
     # 去掉 ```json 和 ``` 包装
@@ -507,7 +507,7 @@ def _llm_decide_next(llm: LLM, agent_name: str, agent_output: dict, intent: dict
     {agent_name} 的产出:
     {json.dumps(agent_output, ensure_ascii=False, indent=2)}
     """
-    raw_reply = llm.chat(_SYSTEM_PROMPT_DECIDE, context)
+    raw_reply = llm.chat(_SYSTEM_PROMPT_DECIDE, context, thinking_label="决定下一步行动")
 
     # 清理 markdown 包装
     cleaned = raw_reply.strip()
