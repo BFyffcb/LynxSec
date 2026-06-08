@@ -245,11 +245,16 @@ def main():
 
     # --update-skills: mark knowledge base as updated
     if "--update-skills" in sys.argv:
-        console.print("[bold]Updating skills knowledge base...[/bold]")
-        from infra.skills.updater import mark_updated, print_update_status
-        mark_updated()
+        console.print("[bold]Updating skills from 13-source whitelist...[/bold]")
+        from infra.skills.updater import run_weekly_update, mark_updated, print_update_status, check_update_needed
+        dry = "--dry-run" in sys.argv
+        results = run_weekly_update(dry=dry)
+        if not dry:
+            mark_updated()
+        if results:
+            ok = sum(1 for v in results.values() if v)
+            console.print(f"[green]{ok}/{len(results)} sources updated.[/green]")
         print_update_status()
-        console.print("[green]Skills updated.[/green]")
         sys.exit(0)
 
     _start_http_server()
@@ -269,12 +274,12 @@ def main():
     scan_all_tools(ROOT)
 
     # ---- ??????? ----
-    from infra.skills.updater import check_update_needed, mark_updated, print_update_status
+    from infra.skills.updater import check_update_needed, print_update_status
     if check_update_needed():
         console.print("[yellow]  [skills] ????? 7 ????[/yellow]")
-        console.print("  [dim]  ?? lyx --update-skills ????[/dim]")
+        console.print("  [dim]  ?? lyx --update-skills ?13???????[/dim]")
     else:
-        console.print("[dim]  [skills] ?????[/dim]")
+        console.print("[dim]  [skills] ????? (13????)[/dim]")
 
     clean_state()
     os.makedirs(STATE, exist_ok=True)

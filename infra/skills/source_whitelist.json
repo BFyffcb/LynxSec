@@ -1,0 +1,146 @@
+{
+  "_meta": {
+    "description": "LynxSec ???????? ? updater ??????????????",
+    "update_day": "Monday",
+    "policy": "????????????????????????",
+    "created": "2026-06-09",
+    "total_sources": 13
+  },
+  "sources": [
+    {
+      "id": "nist",
+      "name": "NIST ? National Institute of Standards and Technology",
+      "domain": "nist.gov",
+      "fetch_urls": [
+        "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-modified.json.zip",
+        "https://csrc.nist.gov/publications/sp800"
+      ],
+      "category": "framework",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "iso",
+      "name": "ISO ? International Organization for Standardization",
+      "domain": "iso.org",
+      "fetch_urls": [
+        "https://www.iso.org/standard/27001"
+      ],
+      "category": "framework",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "cisa",
+      "name": "CISA ? Cybersecurity and Infrastructure Security Agency",
+      "domain": "cisa.gov",
+      "fetch_urls": [
+        "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+      ],
+      "category": "framework",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "enisa",
+      "name": "ENISA ? European Union Agency for Cybersecurity",
+      "domain": "europa.eu",
+      "fetch_urls": [
+        "https://www.enisa.europa.eu/publications"
+      ],
+      "category": "framework",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "owasp",
+      "name": "OWASP ? Open Web Application Security Project",
+      "domain": "owasp.org",
+      "fetch_urls": [
+        "https://owasp.org/www-project-top-ten/",
+        "https://owasp.org/www-project-api-security/",
+        "https://owasp.org/www-project-application-security-verification-standard/"
+      ],
+      "category": "community",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "sans",
+      "name": "SANS ? SysAdmin Audit Network and Security Institute",
+      "domain": "sans.org",
+      "fetch_urls": [
+        "https://www.sans.org/top25-software-errors/"
+      ],
+      "category": "community",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "first",
+      "name": "FIRST ? Forum of Incident Response and Security Teams",
+      "domain": "first.org",
+      "fetch_urls": [
+        "https://www.first.org/cvss/v3.1/specification-document"
+      ],
+      "category": "community",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "mitre_attack",
+      "name": "MITRE ATT&CK ? Adversarial Tactics, Techniques, and Common Knowledge",
+      "domain": "mitre.org",
+      "fetch_urls": [
+        "https://attack.mitre.org/"
+      ],
+      "category": "community",
+      "update_strategy": "version_check"
+    },
+    {
+      "id": "nvd",
+      "name": "NVD ? National Vulnerability Database",
+      "domain": "nist.gov",
+      "fetch_urls": [
+        "https://nvd.nist.gov/vuln/search",
+        "https://services.nvd.nist.gov/rest/json/cves/2.0"
+      ],
+      "category": "vuln_db",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "cve_mitre",
+      "name": "CVE/MITRE ? Common Vulnerabilities and Exposures",
+      "domain": "cve.org",
+      "fetch_urls": [
+        "https://cve.org/Downloads",
+        "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip"
+      ],
+      "category": "vuln_db",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "cnvd",
+      "name": "CNVD ? China National Vulnerability Database",
+      "domain": "cnvd.org.cn",
+      "fetch_urls": [
+        "https://www.cnvd.org.cn/flaw/list"
+      ],
+      "category": "vuln_db",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "cnnvd",
+      "name": "CNNVD ? China National Vulnerability Database of Information Security",
+      "domain": "cnnvd.org.cn",
+      "fetch_urls": [
+        "https://www.cnnvd.org.cn/home/globalSearch"
+      ],
+      "category": "vuln_db",
+      "update_strategy": "daily_feed"
+    },
+    {
+      "id": "intel_sdm",
+      "name": "Intel SDM ? Intel Software Developer Manual",
+      "domain": "intel.com",
+      "fetch_urls": [
+        "https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html"
+      ],
+      "category": "framework",
+      "update_strategy": "version_check"
+    }
+  ]
+}
