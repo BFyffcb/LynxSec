@@ -210,9 +210,40 @@ def interactive(dry):
             console.print(f"\n  {tag('dispatcher')} [yellow]not completed[/yellow]")
         show_agents()
 
+
+def _start_http_server():
+    """启动本地 HTTP 服务器，提供 Dashboard 访问 localhost:9988。
+
+    纯静态 + CORS 宽松，Dashboard 通过 fetch ../state/*.json 读数据。
+    """
+    import threading, http.server, os as _os
+
+    ui_dir = _os.path.join(ROOT, "ui")
+    state_dir = _os.path.join(ROOT, "state")
+    outputs_dir = _os.path.join(ROOT, "outputs")
+
+    class DashboardHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=ROOT, **kwargs)
+
+        def end_headers(self):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-store")
+            super().end_headers()
+
+        def log_message(self, format, *args):
+            pass  # 安静模式
+
+    server = http.server.HTTPServer(("127.0.0.1", 9988), DashboardHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    console.print(f"  [dim]Dashboard: http://localhost:9988/ui/lynxsec-dashboard.html[/dim]")
+    return server
+
 def main():
     dry = "--dry-run" in sys.argv
 
+    _start_http_server()
     if not check_config():
         console.print("[red]config.env missing or incomplete.[/red]")
         sys.exit(1)
