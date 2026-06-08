@@ -27,6 +27,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from infra.llm import LLM  # type: ignore[import-untyped]
+from infra.skills.loader import build_prompt  # type: ignore[import-untyped]
 
 # ============================================================
 # 常量
@@ -224,7 +225,7 @@ def _audit(llm: LLM, upstream: dict, command: dict) -> dict:
     context = "\n".join(context_parts)
 
     print("[审计Agent] 正在分析漏洞、过滤误报、评估影响...")
-    raw_reply = llm.chat(_SYSTEM_PROMPT_AUDIT, context)
+    raw_reply = llm.chat(build_prompt(_SYSTEM_PROMPT_AUDIT), context)
 
     cleaned = raw_reply.strip()
     if cleaned.startswith("```"):

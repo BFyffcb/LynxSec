@@ -114,24 +114,22 @@ def _map_error(
 # 参数安全校验
 # ============================================================
 
-_DANGEROUS_FLAGS: dict[str, list[str]] = {
+# 参数分级系统（借鉴 Nuclei "unsafe" 模板 + sqlmap 显式警告设计）
+
+# 永久拦截：无论什么场景都禁止。相当于物理安全闸。
+_BLOCKED_FOREVER: dict[str, list[str]] = {
+    "nc": ["-e", "-c", "-l"],       # 反弹shell — 攻击行为
+}
+
+# 受限参数：专业用户在显式授权后可使用。
+# 设置了环境变量 LYNXSEC_ALLOW_DANGEROUS=1 时放行，否则拦截。
+_RESTRICTED_FLAGS: dict[str, list[str]] = {
     "sqlmap": [
         "--os-shell", "--os-cmd", "--os-pwn",
         "--file-read", "--file-write", "--file-dest",
         "--sql-shell", "--reg-read", "--reg-write",
         "--dump-all", "--drop-set",
-    ],
-    "hydra": [
-        "-t",
-    ],
-    "nuclei": [
-        "-rl",
-    ],
-    "nmap": [
-        "--script",
-    ],
-    "metasploit": [
-        "msfconsole",
+        "--sql-query",
     ],
 }
 
@@ -141,44 +139,138 @@ _NMAP_ALLOWED_SCRIPTS: set[str] = {
     "ftp-anon", "ssh-auth-methods",
 }
 
+# 工具白名单。不在名单里的工具名一律被 _validate_args 拦截。
+# 新增工具时，在此注册后才会放行。
+_ALLOWED_TOOLS: set[str] = {
+    "nmap", "whatweb", "subfinder",
+    "sqlmap", "hydra", "nuclei",
+}
+
+
+# 工具白名单。不在名单里的工具名一律被 _validate_args 拦截。
+# 新增工具时，在此注册后才会放行。
+_ALLOWED_TOOLS: set[str] = {
+    "nmap", "whatweb", "subfinder",
+    "sqlmap", "hydra", "nuclei",
+}
+
+
+def _is_dangerous_allowed() -> bool:
+    """检查用户是否显式授权了 restricted 级别参数。
+
+    环境变量 LYNXSEC_ALLOW_DANGEROUS=1 时放行 restricted 参数。
+    永久拦截参数 (_BLOCKED_FOREVER) 在任何情况下都不放行。
+    """
+    return os.getenv("LYNXSEC_ALLOW_DANGEROUS", "").strip() == "1"
+
 def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
-    """检查参数是否包含危险标志.
+    """检查参数是否包含危险标志. 三级分类:
 
-    对应网络安全法第二十七条:
-      不得提供专门用于从事侵入网络、干扰网络正常功能
-      窃取网络数据等危害网络安全活动的程序、工具.
+    blocked (永久拦截): nc -e/-c/-l — 攻击行为，永不放过
+    restricted (受限): sqlmap --os-shell 等 — 需 LYNXSEC_ALLOW_DANGEROUS=1
+    safe_limit (限流): hydra -t 0 / nuclei -rl < 10 — 防 DoS
 
-    在参数到达 subprocess 之前拦截危险操作.
-    LynxSec 不为一键入侵提供便利.
+    对应网络安全法第二十七条 + Nuclei "unsafe" 模板设计.
 
     返回:
         (True, "")  -- 安全，可以继续
         (False, reason) -- 被拦截，原因说明
     """
-    blocked = _DANGEROUS_FLAGS.get(tool_name, [])
+    # ---- 检查工具名白名单（缺口1修复：默认拒绝未知工具）----
+    if tool_name not in _ALLOWED_TOOLS:
+        return False, (
+            f"[BLOCKED] unknown tool [{tool_name}] not in allowlist. "
+            f"approved: {sorted(_ALLOWED_TOOLS)}"
+        )
 
+    # ---- 检查工具名白名单（缺口1修复：默认拒绝未知工具）----
+    if tool_name not in _ALLOWED_TOOLS:
+        return False, (
+            f"[BLOCKED] unknown tool [{tool_name}] not in allowlist. "
+            f"approved: {sorted(_ALLOWED_TOOLS)}"
+        )
+
+    dangerous_allowed = _is_dangerous_allowed()
+
+    # ---- 永久拦截（物理不可绕过）----
+    forever_blocked = _BLOCKED_FOREVER.get(tool_name, [])
     for i, arg in enumerate(args):
         arg_stripped = arg.strip()
-        for bad in blocked:
+        for bad in forever_blocked:
             if arg_stripped == bad or arg_stripped.startswith(bad + "="):
-                return False, f"dangerous flag blocked [{tool_name}]: {bad}"
+                _log_block_attempt(tool_name, bad, "BLOCKED_FOREVER")
+                return False, f"[BLOCKED] {tool_name} {bad} — 攻击类参数，在任何模式下不可用"
 
-        if tool_name == "hydra" and arg in ("-t", "--threads"):
-            if i + 1 < len(args) and args[i + 1] == "0":
-                return False, f"dangerous flag blocked [{tool_name}]: -t 0 (unlimited threads)"
+    # ---- 受限参数（需显式授权）----
+    restricted = _RESTRICTED_FLAGS.get(tool_name, [])
+    for i, arg in enumerate(args):
+        arg_stripped = arg.strip()
+        for bad in restricted:
+            if arg_stripped == bad or arg_stripped.startswith(bad + "="):
+                if not dangerous_allowed:
+                    _log_block_attempt(tool_name, bad, "RESTRICTED")
+                    return False, (
+                        f"[RESTRICTED] {tool_name} {bad} — 需设置环境变量 "
+                        f"LYNXSEC_ALLOW_DANGEROUS=1 后使用. "
+                        f"注意: 仅在授权范围内使用，后果自负."
+                    )
+                # 用户显式授权了 → 放行
+                print(f"  [tools] 危险参数已授权: {tool_name} {bad}")
 
-        if tool_name == "nmap" and arg == "--script":
-            if i + 1 < len(args):
-                scripts = args[i + 1].split(",")
-                for s in scripts:
-                    s_clean = s.strip()
-                    if s_clean not in _NMAP_ALLOWED_SCRIPTS:
-                        return False, (
-                            f"nmap NSE script not in allowlist [{tool_name}]: {s_clean}. "
-                            f"allowed: {sorted(_NMAP_ALLOWED_SCRIPTS)}"
-                        )
+    # ---- 限流检查（防 DoS, 扫描全部 args）----
+    for idx, a in enumerate(args):
+        a_stripped = a.strip()
+
+        # hydra: -t 0 = 不限线程/DoS
+        if tool_name == "hydra" and a_stripped in ("-t", "--threads"):
+            if idx + 1 < len(args):
+                try:
+                    if int(args[idx + 1].lstrip("=")) == 0:
+                        return False, "[BLOCKED] hydra -t 0 (无限线程/DoS风险)"
+                except ValueError:
+                    pass
+
+        # nuclei: -rl 必须 >= 10 req/s
+        if tool_name == "nuclei" and a_stripped in ("-rl", "--rate-limit"):
+            if idx + 1 < len(args):
+                raw = args[idx + 1]
+                try:
+                    if int(raw.lstrip("=")) < 10:
+                        return False, f"[BLOCKED] nuclei -rl {raw} 过低; 最小 10 req/s"
+                except ValueError:
+                    return False, f"[BLOCKED] nuclei 无效 -rl 值: {raw}"
+
+        # nmap: --script 白名单
+        if tool_name == "nmap":
+            script_list: list[str] = []
+            if a_stripped == "--script":
+                if idx + 1 < len(args):
+                    script_list = args[idx + 1].split(",")
+            elif a_stripped.startswith("--script="):
+                script_list = a_stripped[len("--script="):].split(",")
+            for s in script_list:
+                s_clean = s.strip()
+                if s_clean and s_clean not in _NMAP_ALLOWED_SCRIPTS:
+                    return False, (
+                        f"[BLOCKED] nmap NSE 脚本 {s_clean} 不在允许列表中. "
+                        f"允许: {sorted(_NMAP_ALLOWED_SCRIPTS)}"
+                    )
 
     return True, ""
+
+def _log_block_attempt(tool: str, flag: str, level: str) -> None:
+    """记录被拦截的尝试到日志文件。不被拦截失败中断。"""
+    from datetime import datetime, timezone, timedelta
+    try:
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               "outputs", "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "blocked_params.log")
+        ts = datetime.now(timezone(timedelta(hours=8))).isoformat()
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(f"{ts} | {level:16s} | {tool:12s} | {flag}\n")
+    except OSError:
+        pass
 
 
 # ============================================================
@@ -207,7 +299,7 @@ def run_tool(
 
     纪律 C3（异常处理）：所有异常都被捕获并转为 ToolResult，
     不向上抛出未处理的异常。
-    纪律 C4（安全边界）：危险参数在 subprocess 之前被 _validate_args 拦截。
+    纪律 C4（安全边界）：参数在 subprocess 之前被 _validate_args 三级拦截。
     """
     safe, block_reason = _validate_args(tool_name, args)
     if not safe:
