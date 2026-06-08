@@ -405,3 +405,79 @@ GitHub 域名被墙(HTTPS SSL EOF + SSH 198.18.0.130 阻断), 机场余额不足
 
 - `tests/test_tools.py` 18/18 保持通过
 - 全部 5 个 Agent + dispatcher 导入验证通过
+
+
+---
+
+## 阶段六：工具预检 + 真枪联调 + Dashboard (2026-06-08)
+
+### 工具可用性预检
+
+新建 `infra/tool_checker.py`，启动时批量检测 5 个安全工具：
+sulfinder/nuclei 复制到 `/usr/local/bin` 解决 PATH 问题
+hydra 用 `test -x` 绕过退出码 255 干扰
+输出格式：`[recon] nmap ... OK`
+
+### 真枪联调 -- 全链路首次闭环
+
+`lyx` -> `扫描 localhost` 完成完整流水线：
+- recon: nmap 发现 HTTP 80
+- pentest: sqlmap + nuclei -> dvwa-default-login CRITICAL
+- auditor: Default Credentials CVSS 9.8
+- reporter: 双版本报告 .md
+
+修复的真枪联调 bug：
+- pentest 同工具多次调用文件名覆盖 -> 加序号 (nuclei_1.txt, nuclei_2.txt)
+- nmap top-ports 1000 超时 -> 降为 100
+- whatweb WSL 安装损坏 -> 代码层硬过滤 + prompt 移除
+- recon prompt 约束：禁止 -O/-sS，强制 -sT/-Pn
+
+### 流水线规则硬化
+
+pentest 不可被 LLM 跳过。recon 发现 Web 端口时强制推进。
+
+### Web Dashboard
+
+新建 `ui/lynxsec-dashboard.html` (35KB)：
+- 数据源：fetch ../state/*.json 6 个 JSON
+- 5 Tab：仪表盘/Agent状态/任务流水线/工具集/报告输出
+- Agent 三态：idle(绿)/working(蓝)/blocked(橙) + 脉冲动画
+- 15s 自动刷新
+- lynxcli.py 内置 HTTP 服务器 localhost:9988
+
+
+---
+
+## 阶段七：编码修复 + Dashboard v2 + Git推送修复 (2026-06-08)
+
+### Windows 终端 GBK 乱码修复
+
+现象：`[调度Agent]` 显示为 `[璋冨害Agent]`
+根因：subprocess.Popen 未传 PYTHONIOENCODING=utf-8
+修复：env["PYTHONIOENCODING"] = "utf-8" 加入子进程环境
+
+### Dashboard v2 -- 小林抛光版
+
+替换 ui/lynxsec-dashboard.html (34,994 字节)：
+- 五色 Agent 主题：dispatcher青/recon蓝/pentest红/auditor紫/reporter金
+- 视觉升级：antialiased、卡片hover抬升、扩散光环动画、全局扫描线
+- 字体：Inter 300-900 + JetBrains Mono 300-700 + 苹方/微软雅黑中文栈
+- 流水线：cubic-bezier 缓动 + active 发光脉冲
+- 报告按 Agent 色系左边框，人话版自动识别打 tag
+
+### Git 推送修复
+
+Windows 凭据管理器存储两个 GitHub 凭据：
+- git:https://github.com -> ByNamsizsoft (无仓库权限)
+- git:https://BFyffcb@github.com -> BFyffcb (仓库所有者)
+
+remote URL 无用户名前缀，匹配到通用凭据 -> 403。
+修复：git remote set-url origin https://BFyffcb@github.com/BFyffcb/LynxSec.git
+
+### 清理
+
+删除 `_serve.py`（功能已被 lynxcli.py 内置 HTTP 替代）
+
+### 全链路最终验证
+
+lyx -> 扫描 localhost，5 Agent 全部 success，累计 20 commits 已推送。
