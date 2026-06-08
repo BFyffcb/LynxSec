@@ -40,17 +40,35 @@ def check_dvwa():
         return False
 
 def _auto_start_dvwa():
-    """Try to start Docker + DVWA container inside WSL."""
+    """Try to start Docker + DVWA container inside WSL.
+    WSL cold-boot takes ~14s. Retry with progress feedback.
+    """
     import subprocess as _sp
-    try:
-        _sp.run(["wsl", "-u", "root", "service", "docker", "start"],
-                capture_output=True, timeout=10)
-        _sp.run(["wsl", "-u", "root", "docker", "start", "dvwa"],
-                capture_output=True, timeout=15)
-        return check_dvwa()
-    except Exception:
-        return False
+    import time as _time
 
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        if attempt > 1:
+            console.print(f"  [dim]retry {attempt}/{max_retries}...[/dim]")
+        try:
+            console.print("  [dim]starting Docker...[/dim]", end="", highlight=False)
+            _sp.run(["wsl", "-u", "root", "service", "docker", "start"],
+                    capture_output=True, timeout=30)
+            console.print(" [green]OK[/green]")
+
+            console.print("  [dim]starting DVWA container...[/dim]", end="", highlight=False)
+            _sp.run(["wsl", "-u", "root", "docker", "start", "dvwa"],
+                    capture_output=True, timeout=20)
+            console.print(" [green]OK[/green]")
+
+            _time.sleep(2)
+            if check_dvwa():
+                return True
+        except Exception:
+            console.print(" [red]failed[/red]")
+            if attempt < max_retries:
+                _time.sleep(2)
+    return False
 def ensure_dvwa():
     """Check DVWA, auto-recover if possible."""
     if check_dvwa():
