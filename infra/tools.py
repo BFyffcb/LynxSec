@@ -124,6 +124,8 @@ _BLOCKED_FOREVER: dict[str, list[str]] = {
 # 受限参数：专业用户在显式授权后可使用。
 # 设置了环境变量 LYNXSEC_ALLOW_DANGEROUS=1 时放行，否则拦截。
 _RESTRICTED_FLAGS: dict[str, list[str]] = {
+    # semgrep: ????????????
+    "semgrep": [],
     "sqlmap": [
         "--os-shell", "--os-cmd", "--os-pwn",
         "--file-read", "--file-write", "--file-dest",
@@ -153,6 +155,8 @@ _ALLOWED_TOOLS: set[str] = {
     # pentest ??
     "sqlmap", "hydra", "nuclei",
     "ffuf", "dalfox", "testssl",
+    # SAST / SCA / AI ??
+    "semgrep", "syft", "grype",
 }
 
 
