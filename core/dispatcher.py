@@ -35,6 +35,7 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from infra.llm import LLM  # type: ignore[import-untyped]
+from infra.common import read_json as _read_json, write_json as _write_json  # type: ignore[import-untyped]
 
 # ============================================================
 # 常量配置
@@ -90,50 +91,6 @@ def _agent_status_path(agent: str) -> str:
     return os.path.join(_STATE_DIR, f"{agent}_status.json")
 
 
-def _read_json(filepath: str) -> dict | None:
-    """安全地读取 JSON 文件。
-
-    返回:
-        解析后的字典；文件不存在或格式错误则返回 None。
-    """
-    if not os.path.isfile(filepath):
-        return None
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-        # 防御 BOM（Windows 记事本有时会加）
-        if content.startswith("\ufeff"):
-            content = content[1:]
-        return json.loads(content)
-    except (json.JSONDecodeError, OSError) as e:
-        # 纪律 R1（零静默失败）：关键操作失败必须记录日志
-        print(f"[LOG] 读取 JSON 失败: {filepath} — {e}")
-        return None
-
-
-def _write_json(filepath: str, data: dict) -> bool:
-    """原子写入 JSON 文件（先写 .tmp，再 rename）。
-
-    返回:
-        True 表示写入成功，False 表示失败。
-    纪律 C3（异常处理）：捕获异常必须记录日志。
-    """
-    tmp_path = filepath + ".tmp" + str(os.getpid())
-    try:
-        # 确保目录存在
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, filepath)  # 原子重命名（Windows 上也安全）
-        return True
-    except OSError as e:
-        print(f"[LOG] 写入 JSON 失败: {filepath} — {e}")
-        # 清理临时文件
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        return False
 
 
 def _ensure_state_dir() -> None:
@@ -694,7 +651,11 @@ def run(user_input: str) -> str | None:
                 _update_pipeline(task_id, status="halted")
                 return None
             elif user_choice == "retry":
-                _dispatch_agent(agent, task_id, action, step_target, step_params)
+                if not _dispatch_agent(agent, task_id, action, step_target, step_params):
+                    print(f"[调度Agent] 重试下发失败，跳过 {agent}。")
+                    _update_pipeline(task_id, step_completed=agent)
+                    completed_steps.append(agent)
+                    continue
                 retry_result = _wait_for_agent(agent, task_id)
                 if retry_result != "done":
                     print(f"[调度Agent] {agent} 重试仍未成功，跳过。")

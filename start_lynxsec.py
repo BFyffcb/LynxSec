@@ -25,7 +25,7 @@ import subprocess
 import sys
 import time
 from glob import glob
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener, urlopen
 from urllib.error import URLError
 
 # ============================================================
@@ -119,8 +119,9 @@ def _check_dvwa() -> bool:
     print(f"[启动检查] 检测 DVWA ({_DVWA_URL}) ...", end=" ", flush=True)
 
     try:
-        request = Request(_DVWA_URL, method="GET")
-        with urlopen(request, timeout=5) as response:
+        handler = ProxyHandler({})
+        opener = build_opener(handler)
+        with opener.open(_DVWA_URL, timeout=5) as response:
             print(f"? HTTP {response.status}")
             return True
     except URLError:

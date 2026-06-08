@@ -161,7 +161,7 @@ def interactive(dry):
 
     try:
         console.print(f"  {tag('dispatcher')} [dim]connecting...[/dim]")
-        dispatch("")
+        console.print(f"  {tag("dispatcher")} [dim]ready. Type a task to begin.[/dim]")
     except: pass
 
     console.print("\n[dim]  Type a request or /help.  /quit to exit.[/dim]\n")

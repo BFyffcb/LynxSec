@@ -35,6 +35,7 @@ if _PROJECT_ROOT not in sys.path:
 
 from infra.llm import LLM           # type: ignore[import-untyped]
 from infra.tools import run_tool     # type: ignore[import-untyped]
+from infra.common import read_json as _read_json, write_json as _write_json  # type: ignore[import-untyped]
 
 # ============================================================
 # 常量配置
@@ -55,38 +56,6 @@ def _now_iso() -> str:
     """当前北京时间 ISO 格式。"""
     return datetime.now(_CST).isoformat()
 
-
-def _read_json(filepath: str) -> dict | None:
-    """安全读取 JSON 文件。"""
-    if not os.path.isfile(filepath):
-        return None
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-        if content.startswith("\ufeff"):
-            content = content[1:]
-        return json.loads(content)
-    except (json.JSONDecodeError, OSError) as e:
-        print(f"[LOG] 读取 JSON 失败: {filepath} — {e}")
-        return None
-
-
-def _write_json(filepath: str, data: dict) -> bool:
-    """原子写入 JSON（.tmp + rename）。"""
-    tmp_path = filepath + ".tmp" + str(os.getpid())
-    try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp_path, filepath)
-        return True
-    except OSError as e:
-        print(f"[LOG] 写入 JSON 失败: {filepath} — {e}")
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        return False
 
 
 # ============================================================

@@ -6,6 +6,7 @@
 
 import json
 import os
+import time as _time
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 from dotenv import load_dotenv
@@ -71,7 +72,6 @@ class LLM:
             RuntimeError: API 调用失败时抛出（带详细错误信息）
         """
         if thinking_label:
-            import time as _time
             _start = _time.time()
             print(f"  ⏳ {thinking_label}...", end="", flush=True)
 

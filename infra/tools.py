@@ -143,15 +143,7 @@ _NMAP_ALLOWED_SCRIPTS: set[str] = {
 # 新增工具时，在此注册后才会放行。
 _ALLOWED_TOOLS: set[str] = {
     "nmap", "whatweb", "subfinder",
-    "sqlmap", "hydra", "nuclei",
-}
-
-
-# 工具白名单。不在名单里的工具名一律被 _validate_args 拦截。
-# 新增工具时，在此注册后才会放行。
-_ALLOWED_TOOLS: set[str] = {
-    "nmap", "whatweb", "subfinder",
-    "sqlmap", "hydra", "nuclei",
+    "sqlmap", "hydra", "nuclei", "nc",
 }
 
 
@@ -166,8 +158,9 @@ def _is_dangerous_allowed() -> bool:
 def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
     """检查参数是否包含危险标志. 三级分类:
 
-    blocked (永久拦截): nc -e/-c/-l — 攻击行为，永不放过
+    blocked (永久拦截): nc -e/-c/-l — 攻击行为，永不放过. 最先执行.  
     restricted (受限): sqlmap --os-shell 等 — 需 LYNXSEC_ALLOW_DANGEROUS=1
+    tool_whitelist: 未知工具名直接拦截
     safe_limit (限流): hydra -t 0 / nuclei -rl < 10 — 防 DoS
 
     对应网络安全法第二十七条 + Nuclei "unsafe" 模板设计.
@@ -176,23 +169,7 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
         (True, "")  -- 安全，可以继续
         (False, reason) -- 被拦截，原因说明
     """
-    # ---- 检查工具名白名单（缺口1修复：默认拒绝未知工具）----
-    if tool_name not in _ALLOWED_TOOLS:
-        return False, (
-            f"[BLOCKED] unknown tool [{tool_name}] not in allowlist. "
-            f"approved: {sorted(_ALLOWED_TOOLS)}"
-        )
-
-    # ---- 检查工具名白名单（缺口1修复：默认拒绝未知工具）----
-    if tool_name not in _ALLOWED_TOOLS:
-        return False, (
-            f"[BLOCKED] unknown tool [{tool_name}] not in allowlist. "
-            f"approved: {sorted(_ALLOWED_TOOLS)}"
-        )
-
-    dangerous_allowed = _is_dangerous_allowed()
-
-    # ---- 永久拦截（物理不可绕过）----
+    # ---- 永久拦截（物理不可绕过）— 最先执行，优先级最高 ----
     forever_blocked = _BLOCKED_FOREVER.get(tool_name, [])
     for i, arg in enumerate(args):
         arg_stripped = arg.strip()
@@ -200,6 +177,15 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
             if arg_stripped == bad or arg_stripped.startswith(bad + "="):
                 _log_block_attempt(tool_name, bad, "BLOCKED_FOREVER")
                 return False, f"[BLOCKED] {tool_name} {bad} — 攻击类参数，在任何模式下不可用"
+
+    # ---- 工具名白名单 ----
+    if tool_name not in _ALLOWED_TOOLS:
+        return False, (
+            f"[BLOCKED] unknown tool [{tool_name}] not in allowlist. "
+            f"approved: {sorted(_ALLOWED_TOOLS)}"
+        )
+
+    dangerous_allowed = _is_dangerous_allowed()
 
     # ---- 受限参数（需显式授权）----
     restricted = _RESTRICTED_FLAGS.get(tool_name, [])
@@ -214,14 +200,11 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
                         f"LYNXSEC_ALLOW_DANGEROUS=1 后使用. "
                         f"注意: 仅在授权范围内使用，后果自负."
                     )
-                # 用户显式授权了 → 放行
                 print(f"  [tools] 危险参数已授权: {tool_name} {bad}")
 
     # ---- 限流检查（防 DoS, 扫描全部 args）----
     for idx, a in enumerate(args):
         a_stripped = a.strip()
-
-        # hydra: -t 0 = 不限线程/DoS
         if tool_name == "hydra" and a_stripped in ("-t", "--threads"):
             if idx + 1 < len(args):
                 try:
@@ -229,8 +212,6 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
                         return False, "[BLOCKED] hydra -t 0 (无限线程/DoS风险)"
                 except ValueError:
                     pass
-
-        # nuclei: -rl 必须 >= 10 req/s
         if tool_name == "nuclei" and a_stripped in ("-rl", "--rate-limit"):
             if idx + 1 < len(args):
                 raw = args[idx + 1]
@@ -239,8 +220,6 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
                         return False, f"[BLOCKED] nuclei -rl {raw} 过低; 最小 10 req/s"
                 except ValueError:
                     return False, f"[BLOCKED] nuclei 无效 -rl 值: {raw}"
-
-        # nmap: --script 白名单
         if tool_name == "nmap":
             script_list: list[str] = []
             if a_stripped == "--script":
@@ -257,6 +236,7 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
                     )
 
     return True, ""
+
 
 def _log_block_attempt(tool: str, flag: str, level: str) -> None:
     """记录被拦截的尝试到日志文件。不被拦截失败中断。"""
@@ -374,34 +354,3 @@ def run_tool(
 # ============================================================
 # Nmap standard scan wrapper
 # ============================================================
-
-def run_nmap(target: str, extra_args: list[str] | None = None, timeout: int = 300) -> ToolResult:
-    """Nmap standard scan with vulners, http-enum, http-cookie-flags scripts.
-    Flags: -sV --script=vulners,http-enum,http-cookie-flags -p- {target}
-    """
-    base_args = [
-        "-sV",
-        "--script=vulners,http-enum,http-cookie-flags",
-        "-p-",
-        target,
-    ]
-    if extra_args:
-        base_args = base_args[:-1] + extra_args + [target]
-    print(f"  [tools] Nmap standard scan: {target}")
-    return run_tool("nmap", base_args, timeout=timeout)
-
-
-def run_whatweb(target: str, extra_args: list[str] | None = None, timeout: int = 120) -> ToolResult:
-    """WhatWeb fingerprint wrapper."""
-    args = extra_args if extra_args else []
-    args.append(target)
-    print(f"  [tools] WhatWeb: {target}")
-    return run_tool("whatweb", args, timeout=timeout)
-
-
-def run_subfinder(domain: str, timeout: int = 120) -> ToolResult:
-    """Subfinder subdomain discovery. Domain only, not IP."""
-    args = ["-d", domain]
-    print(f"  [tools] Subfinder: {domain}")
-    return run_tool("subfinder", args, timeout=timeout)
-
