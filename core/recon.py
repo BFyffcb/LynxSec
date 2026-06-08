@@ -422,6 +422,10 @@ def poll_loop() -> None:
         if command_data is None:
             time.sleep(_POLL_INTERVAL_SECONDS)
             continue
+        # ?? shutdown ??
+        if command_data.get("action") == "shutdown":
+            print("[??Agent] ?? shutdown ???????...")
+            break
 
         current_task_id: str | None = command_data.get("task_id")
 
