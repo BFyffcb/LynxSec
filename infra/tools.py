@@ -134,8 +134,8 @@ _RESTRICTED_FLAGS: dict[str, list[str]] = {
         "--sql-query",
     ],
     # ???????????/????
-    "ffuf": ["-t", "-rate"],
-    "gobuster": ["-t"],
+    "ffuf": [],
+    "gobuster": [],
     # dalfox ????????????????
     "dalfox": [],
     "testssl": [],
@@ -218,6 +218,14 @@ def _validate_args(tool_name: str, args: list[str]) -> tuple[bool, str]:
     # ---- 限流检查（防 DoS, 扫描全部 args）----
     for idx, a in enumerate(args):
         a_stripped = a.strip()
+        if tool_name in ("ffuf", "gobuster") and a_stripped == "-t":
+            if idx + 1 < len(args):
+                try:
+                    t_val = int(args[idx + 1].lstrip("="))
+                    if t_val == 0:
+                        return False, f"[BLOCKED] {tool_name} -t 0 (无限线程/DoS风险)"
+                except ValueError:
+                    pass
         if tool_name == "hydra" and a_stripped in ("-t", "--threads"):
             if idx + 1 < len(args):
                 try:
