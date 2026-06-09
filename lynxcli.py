@@ -273,17 +273,16 @@ def main():
     from infra.tool_checker import scan_all_tools
     scan_all_tools(ROOT)
 
-    # ---- ??????? ----
-    # ---- ??????? ----
+    # ---- 知识库校验 ----
     from infra.skills.loader import validate_skills
     validate_skills()
 
     from infra.skills.updater import check_update_needed, print_update_status
     if check_update_needed():
-        console.print("[yellow]  [skills] ????? 7 ????[/yellow]")
-        console.print("  [dim]  ?? lyx --update-skills ?13???????[/dim]")
+        console.print("[yellow]  [skills] 知识库超过 7 天未更新[/yellow]")
+        console.print("  [dim]  运行 lyx --update-skills 从13个白名单源更新[/dim]")
     else:
-        console.print("[dim]  [skills] ????? (13????)[/dim]")
+        console.print("[dim]  [skills] 知识库最新 (13源白名单)[/dim]")
 
     clean_state()
     os.makedirs(STATE, exist_ok=True)

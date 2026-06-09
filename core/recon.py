@@ -122,7 +122,7 @@ def _write_done_status(task_id: str, outputs: list, result: str, code: int = 0) 
 _SYSTEM_PROMPT_PLAN = """你是 LynxSec 的情报收集规划器。基于以下任务目标，规划需要按顺序执行的安全工具。
 
 重要约束（必须遵守）：
-- nmap 扫描端头使用 --top-ports 1000 或 -p 80,443,8080,8443，禁止使用 -p- 或 -p 1-65535
+- nmap 扫描端头使用 --top-ports 100 或 -p 80,443,8080,8443，禁止使用 -p- 或 -p 1-65535
 - nmap 必须使用 -sT（TCP connect，无需root）和 -Pn（跳过ping，Docker/WSL环境必需）
 - 禁止使用 -O 参数（OS指纹扫描需要 root 权限）
 - subfinder 仅用于外部域名（如 example.com），不要对 localhost/IP 地址使用
@@ -423,9 +423,9 @@ def poll_loop() -> None:
         if command_data is None:
             time.sleep(_POLL_INTERVAL_SECONDS)
             continue
-        # ?? shutdown ??
+        # check shutdown signal
         if command_data.get("action") == "shutdown":
-            print("[??Agent] ?? shutdown ???????...")
+            print("[情报Agent] 收到 shutdown 信号，正在退出...")
             break
 
         current_task_id: str | None = command_data.get("task_id")
