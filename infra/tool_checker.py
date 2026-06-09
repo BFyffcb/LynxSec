@@ -18,8 +18,6 @@ AGENT_TOOLS = {
         {"name": "ffuf", "check": "test -x /usr/local/bin/ffuf || command -v ffuf"},
         {"name": "dalfox", "check": "test -x /usr/local/bin/dalfox || command -v dalfox"},
         {"name": "testssl", "check": "test -x /usr/local/bin/testssl || command -v testssl"},
-    ],
-    "sca": [
         {"name": "semgrep", "check": "command -v semgrep"},
         {"name": "syft", "check": "test -x /usr/local/bin/syft || command -v syft"},
         {"name": "grype", "check": "test -x /usr/local/bin/grype || command -v grype"},
