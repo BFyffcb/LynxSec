@@ -274,6 +274,10 @@ def main():
     scan_all_tools(ROOT)
 
     # ---- ??????? ----
+    # ---- ??????? ----
+    from infra.skills.loader import validate_skills
+    validate_skills()
+
     from infra.skills.updater import check_update_needed, print_update_status
     if check_update_needed():
         console.print("[yellow]  [skills] ????? 7 ????[/yellow]")

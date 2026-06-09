@@ -114,3 +114,37 @@ def build_prompt(base_prompt: str, agent: str = "auditor") -> str:
         return base_prompt
 
     return base_prompt + "\n\n---\n\n## ????\n" + "\n".join(blocks)
+
+def validate_skills(verbose: bool = True) -> dict[str, list[str]]:
+    """Validate all wiki and reference files referenced in agent_skills.json.
+
+    Args:
+        verbose: If True, print warnings for missing files.
+
+    Returns:
+        {agent_name: [missing_file_list]} dict. Empty dict if all files present.
+    """
+    import json as _json
+    config = _skills_config()
+    missing: dict[str, list[str]] = {}
+    for agent, cfg in config.items():
+        if agent.startswith("_"):
+            continue
+        lost: list[str] = []
+        for fname in cfg.get("wiki_files", []):
+            full = os.path.join(_wiki_dir(), fname)
+            if not os.path.isfile(full):
+                lost.append(f"[wiki] {fname}")
+        for fname in cfg.get("local_refs", []):
+            full = os.path.join(_ref_dir(), fname)
+            if not os.path.isfile(full):
+                lost.append(f"[refs] {fname}")
+        if lost:
+            missing[agent] = lost
+    if verbose and missing:
+        print("  [skills] WARNING: some knowledge files missing:")
+        for agent, files in missing.items():
+            for f in files:
+                print(f"    [{agent}] {f}")
+        print("  [skills] Set LYNXSEC_WIKI_DIR env var or restore wiki files.")
+    return missing
