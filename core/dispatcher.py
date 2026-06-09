@@ -374,14 +374,14 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
                 decision = {"next_action": "continue", "target": target,
                     "params": {}, "reason": "流水线继续"}
 
-        if not decision.get("next_action") or decision.get("next_action") == "stop":
+        if not decision.get("action") or decision.get("action") == "stop":
             print("[调度Agent] LLM 决策终止流水线")
             _update_pipeline(task_id, status="halted")
             return None
 
         step_target = decision.get("target", target)
         step_params = decision.get("params", {})
-        action = decision.get("next_action", "continue")
+        action = decision.get("action", "continue")
         reason = decision.get("reason", "")
         print(f"  决策: {reason}")
 
@@ -691,7 +691,7 @@ def _llm_decide_next(llm: LLM, agent_name: str, agent_output: dict, intent: dict
     except json.JSONDecodeError:
         print(f"[调度Agent] LLM 决策返回格式异常，使用默认参数。")
         return {
-            "next_action": "continue",
+            "action": "continue",
             "target": intent.get("target", ""),
             "params": {},
             "reason": "LLM 解析失败，使用默认参数继续流水线",
