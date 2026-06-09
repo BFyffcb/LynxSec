@@ -19,7 +19,12 @@
       "ai-0day-anthropic.md",
       "ai-security-gateway.md",
       "llm-top10-v2.1.md",
-      "supply-chain-security.md"
+      "supply-chain-security.md",
+      "ai-stage0-foundation.md",
+      "ai-stage1-inherent-security.md",
+      "ai-stage2-model-security.md",
+      "ai-stage3-supply-chain.md",
+      "ai-stage4-compliance.md"
     ],
     "local_refs": [
       "owasp-top10.md",
@@ -71,7 +76,12 @@
       "ctf-guide.md",
       "supply-chain-attacks.md",
       "llm-top10-v2.1.md",
-      "supply-chain-security.md"
+      "supply-chain-security.md",
+      "ai-stage0-foundation.md",
+      "ai-stage1-inherent-security.md",
+      "ai-stage2-model-security.md",
+      "ai-stage3-supply-chain.md",
+      "ai-stage4-compliance.md"
     ],
     "local_refs": []
   },

@@ -1,0 +1,56 @@
+rules:
+  - id: llm-hardcoded-api-key
+    message: "Hardcoded API key found - potential LLM credential leak"
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    patterns:
+      - pattern-regex: '(sk-[a-zA-Z0-9]{32,})'
+      - pattern-regex: '(api_key\s*=\s*["'"'"'][A-Za-z0-9_\-]{20,}["'"'"'])'
+
+  - id: llm-prompt-injection-pattern
+    message: "Potential prompt injection pattern detected"
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    patterns:
+      - pattern-regex: '(ignore|forget|disregard).*(previous|above|prior|all).*(instruction|prompt|rule)'
+      - pattern-regex: '(system\s*:\s*)?you are now.*no (restriction|rule|limit)'
+
+  - id: llm-unsafe-output-handling
+    message: "LLM output passed unsanitized to downstream system"
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              response = $LLM.generate(...)
+              ...
+              exec($RESPONSE)
+          - pattern: |
+              response = $LLM.generate(...)
+              ...
+              eval($RESPONSE)
+          - pattern: |
+              response = $LLM.generate(...)
+              ...
+              os.system($RESPONSE)
+
+  - id: llm-pickle-deserialization
+    message: "Unsafe torch.load() can execute arbitrary code via pickle"
+    severity: ERROR
+    languages: [python]
+    pattern: torch.load(...)
+    fix: "Use safetensors.torch.load_file() instead"
+
+  - id: llm-unvalidated-tool-call
+    message: "Agent tool call result used without validation"
+    severity: WARNING
+    languages: [python]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              result = $TOOL(...)
+              ...
+              $LLM.generate(result)
+    metadata:
+      references:
+        - https://owasp.org/www-project-top-10-for-large-language-model-applications/ (LLM07)
