@@ -62,15 +62,55 @@ fi
 
 export PATH=$PATH:/root/go/bin:$HOME/go/bin
 
-for tool in subfinder nuclei; do
+# Recon tools
+for tool in subfinder gobuster; do
     if ! command -v $tool &> /dev/null; then
         echo "  Installing $tool..."
-        go install github.com/projectdiscovery/$tool/v2/cmd/$tool@latest 2>/dev/null ||
-        go install github.com/projectdiscovery/$tool/v3/cmd/$tool@latest 2>/dev/null
+        case $tool in
+            subfinder) go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest 2>/dev/null || true ;;
+            gobuster)  go install github.com/OJ/gobuster/v3@latest 2>/dev/null || true ;;
+        esac
     else
         echo "  [OK] $tool already installed"
     fi
 done
+
+# Pentest tools
+for tool in nuclei ffuf dalfox; do
+    if ! command -v $tool &> /dev/null; then
+        echo "  Installing $tool..."
+        case $tool in
+            nuclei) go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest 2>/dev/null || true ;;
+            ffuf)   go install github.com/ffuf/ffuf/v2@latest 2>/dev/null || true ;;
+            dalfox) go install github.com/hahwul/dalfox/v2@latest 2>/dev/null || true ;;
+        esac
+    else
+        echo "  [OK] $tool already installed"
+    fi
+done
+
+# SCA tools: syft, grype
+for tool in syft grype; do
+    if ! command -v $tool &> /dev/null; then
+        echo "  Installing $tool..."
+        curl -sSfL https://raw.githubusercontent.com/anchore/$tool/main/install.sh | sh -s -- -b /usr/local/bin 2>/dev/null || true
+    else
+        echo "  [OK] $tool already installed"
+    fi
+done
+
+# semgrep (pip)
+if ! command -v semgrep &> /dev/null; then
+    echo "  Installing semgrep..."
+    pip3 install semgrep --break-system-packages --quiet 2>/dev/null || true
+fi
+
+# testssl.sh
+if ! command -v testssl &> /dev/null; then
+    echo "  Installing testssl..."
+    git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl.sh 2>/dev/null
+    ln -sf /opt/testssl.sh/testssl.sh /usr/local/bin/testssl
+fi
 
 # Make go binaries accessible
 echo "export PATH=\$PATH:/root/go/bin:\$HOME/go/bin" >> /root/.bashrc
