@@ -329,7 +329,6 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
         return None
 
     # 确保 pentest agent 能找到授权记录
-    _save_auth(target, scope)
 
     # 初始化 LLM
     print("[调度Agent] 正在连接 LLM...")
@@ -373,7 +372,7 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
                     "params": {"instruction": f"? {target} ????????"}, "reason": "????"}
             else:
                 decision = {"next_action": "continue", "target": target,
-                    "params": {}, "reason": "?????"}
+                    "params": {}, "reason": "流水线继续"}
 
         if not decision.get("next_action") or decision.get("next_action") == "stop":
             print("[调度Agent] LLM 决策终止流水线")
@@ -394,10 +393,8 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
         msg = f"  [调度Agent] -> 已下发任务到 {agent}（{action}）"
         print(msg)
 
-        # pentest 必须 auth.json
-        if agent == "pentest":
-            _save_auth(target, scope)
-
+        # pentest agent reads auth.json for authorization check
+        
         if not _dispatch_agent(agent, task_id, action, step_target, step_params):
             _update_pipeline(task_id, status="halted")
             return None
