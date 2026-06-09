@@ -369,7 +369,7 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
             # No previous agent output ? use default params for first step
             if step_name == "recon":
                 decision = {"next_action": "reconnaissance", "target": target,
-                    "params": {"instruction": f"? {target} ????????"}, "reason": "????"}
+                    "params": {"instruction": f"对 {target} 进行全面信息收集"}, "reason": "默认侦察"}
             else:
                 decision = {"next_action": "continue", "target": target,
                     "params": {}, "reason": "流水线继续"}

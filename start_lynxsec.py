@@ -44,10 +44,17 @@ _AGENTS: list[str] = ["recon", "pentest", "auditor", "reporter"]
 # 必需的安全工具清单（名称 → 检查命令）
 _REQUIRED_TOOLS: dict[str, list[str]] = {
     "nmap":      ["nmap", "--version"],
-    "whatweb":   ["whatweb", "--version"],
+    "gobuster":  ["gobuster", "--version"],
     "subfinder": ["subfinder", "-version"],
     "sqlmap":    ["sqlmap", "--version"],
     "hydra":     ["hydra", "-h"],
+    "nuclei":    ["nuclei", "-version"],
+    "ffuf":      ["ffuf", "-V"],
+    "dalfox":    ["dalfox", "version"],
+    "testssl":   ["testssl", "--help"],
+    "semgrep":   ["semgrep", "--version"],
+    "syft":      ["syft", "version"],
+    "grype":     ["grype", "version"],
 }
 
 # 启动时清理的目录/文件模式
