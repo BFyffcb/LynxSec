@@ -16,8 +16,15 @@ def _ref_dir() -> str:
 
 
 def _wiki_dir() -> str:
-    """?? LLM Wiki ???????"""
-    return r"C:\Users\ZhuanZ\.workbuddy\wiki-knowledge\wiki"
+    """LLM Wiki root dir: env LYNXSEC_WIKI_DIR > ~/.workbuddy > local references/"""
+    env = os.getenv("LYNXSEC_WIKI_DIR", "")
+    if env and os.path.isdir(env):
+        return env
+    home = os.path.expanduser("~")
+    default = os.path.join(home, ".workbuddy", "wiki-knowledge", "wiki")
+    if os.path.isdir(default):
+        return default
+    return _ref_dir()
 
 
 def _skills_config() -> dict:

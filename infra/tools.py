@@ -137,7 +137,7 @@ _RESTRICTED_FLAGS: dict[str, list[str]] = {
     "ffuf": ["-t", "-rate"],
     "gobuster": ["-t"],
     # dalfox ????????????????
-    "dalfox": ["--no-color"],
+    "dalfox": [],
     "testssl": [],
 }
 
