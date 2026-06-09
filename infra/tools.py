@@ -150,12 +150,12 @@ _NMAP_ALLOWED_SCRIPTS: set[str] = {
 # 工具白名单。不在名单里的工具名一律被 _validate_args 拦截。
 # 新增工具时，在此注册后才会放行。
 _ALLOWED_TOOLS: set[str] = {
-    # recon ??
+    # recon
     "nmap", "subfinder", "gobuster",
-    # pentest ??
+    # pentest
     "sqlmap", "hydra", "nuclei",
     "ffuf", "dalfox", "testssl",
-    # SAST / SCA / AI ??
+    # SAST / SCA
     "semgrep", "syft", "grype",
 }
 
