@@ -330,6 +330,8 @@ def run_tool(
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             cwd=cwd,
         )
@@ -367,7 +369,7 @@ def run_tool(
         success=success,
         code=code,
         stdout=stdout,
-        stderr=stderr,
+        stderr=stderr or "",
         cmd=cmd,
         error_type=error_type,
     )
