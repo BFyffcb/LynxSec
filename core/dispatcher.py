@@ -368,10 +368,10 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
         else:
             # No previous agent output ? use default params for first step
             if step_name == "recon":
-                decision = {"next_action": "reconnaissance", "target": target,
+                decision = {"action": "reconnaissance", "target": target,
                     "params": {"instruction": f"对 {target} 进行全面信息收集"}, "reason": "默认侦察"}
             else:
-                decision = {"next_action": "continue", "target": target,
+                decision = {"action": "continue", "target": target,
                     "params": {}, "reason": "流水线继续"}
 
         if not decision.get("action") or decision.get("action") == "stop":
@@ -390,8 +390,7 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
             continue
 
         _update_pipeline(task_id, step_name=step_name)
-        msg = f"  [调度Agent] -> 已下发任务到 {agent}（{action}）"
-        print(msg)
+        # _dispatch_agent already prints dispatch status
 
         # pentest agent reads auth.json for authorization check
         
@@ -399,8 +398,7 @@ def _resume_from_pipeline(pipeline: dict) -> str | None:
             _update_pipeline(task_id, status="halted")
             return None
 
-        timeout_msg = f"  [调度Agent] 等待 {agent} 完成（最长 {_AGENT_TIMEOUT_SECONDS} 秒）..."
-        print(timeout_msg)
+        # _wait_for_agent already prints wait status
 
         result = _wait_for_agent(agent, task_id)
 
