@@ -406,22 +406,34 @@ def _interactive_loop(dry_run: bool) -> None:
 # ============================================================
 
 def _cleanup(processes: list[subprocess.Popen]) -> None:
-    """退出时停止所有后台 Agent 进程。
-
-    TODO: v1.2 — 目前用 terminate() 杀进程，后续可改为
-    向各 Agent 的 command.json 写入 {"action": "shutdown"} 优雅退出。
-    """
-    print("\n[清理] 正在停止后台 Agent ...")
-    for proc in processes:
-        if proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-            print(f"  ? PID {proc.pid} 已停止")
-    print("[清理] 完成")
-
+    """??????? shutdown ????? 3 ????????"""
+    print("\n[??] ??? Agent ?? shutdown ?? ...")
+    active = [p for p in processes if p.poll() is None]
+    if not active:
+        print("[??] ????? Agent")
+        return
+    import time as _time
+    shutdown_cmd = {"action": "shutdown"}
+    from infra.common import write_json
+    for agent_name in _AGENTS:
+        cmd_path = os.path.join(_STATE_DIR, f"{agent_name}_command.json")
+        try:
+            write_json(cmd_path, shutdown_cmd)
+        except OSError:
+            pass
+    _time.sleep(3)
+    for proc in active:
+        if proc.poll() is not None:
+            print(f"  [OK] PID {proc.pid} ?????")
+            continue
+        print(f"  [??] PID {proc.pid} ???????? ...")
+        proc.terminate()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+        print(f"  [OK] PID {proc.pid} ???")
+    print("[??] ??")
 
 # ============================================================
 # 主入口
